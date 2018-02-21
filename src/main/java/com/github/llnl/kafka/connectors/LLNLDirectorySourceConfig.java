@@ -24,7 +24,7 @@ public class LLNLDirectorySourceConfig extends AbstractConfig {
   }
 
   public static ConfigDef conf() {
-    return new ConfigDef()
+      return new ConfigDef()
             .define(FILENAME, Type.STRING, Importance.HIGH, FILENAME_DOC)
             .define(TOPIC, Type.STRING, Importance.HIGH, TOPIC_DOC);
   }

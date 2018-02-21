@@ -12,14 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class LLNLDirectorySourceConnector extends SourceConnector {
+    private final String TAG = this.getClass().getSimpleName();
     private static Logger log = LoggerFactory.getLogger(LLNLDirectorySourceConnector.class);
-    public static final String TAG = "LLNLDirectorySourceConnector";
-
-    public static final String FILENAME_CONFIG = "filename";
-    public static final String TOPIC_CONFIG = "topic";
-
-    private String filename;
-    private String topic;
 
     private LLNLDirectorySourceConfig config;
 
@@ -30,10 +24,8 @@ public class LLNLDirectorySourceConnector extends SourceConnector {
 
     @Override
     public void start(Map<String, String> props) {
-        log.info(TAG, "connector start");
+        log.info(TAG, "start");
         config = new LLNLDirectorySourceConfig(props);
-        filename = config.getFilename();
-        topic = config.getTopic();
     }
 
     @Override
@@ -43,6 +35,7 @@ public class LLNLDirectorySourceConnector extends SourceConnector {
 
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
+        log.info(TAG, "taskConfigs");
         List<Map<String, String>> taskConfigs = new ArrayList<>();
         Map<String, String> taskProps = new HashMap<>();
         taskProps.putAll(config.originalsStrings());
@@ -54,6 +47,7 @@ public class LLNLDirectorySourceConnector extends SourceConnector {
 
     @Override
     public void stop() {
+        log.info(TAG, "stop");
     }
 
     @Override

@@ -14,14 +14,12 @@ import java.util.Map;
 
 
 public class LLNLDirectorySourceTask extends SourceTask {
-    static final Logger log = LoggerFactory.getLogger(LLNLDirectorySourceTask.class);
-    static final String TAG = "LLNLDirectorySourceTask";
+    private final String TAG = this.getClass().getSimpleName();
+    private static final Logger log = LoggerFactory.getLogger(LLNLDirectorySourceTask.class);
 
     private String filename;
     private BufferedReader reader;
     private String topic;
-
-    private LLNLDirectorySourceConfig config;
 
     private Long streamOffset = 0L;
 
@@ -33,7 +31,7 @@ public class LLNLDirectorySourceTask extends SourceTask {
     @Override
     public void start(Map<String, String> map) {
         log.info(TAG, "start");
-        config = new LLNLDirectorySourceConfig(map);
+        LLNLDirectorySourceConfig config = new LLNLDirectorySourceConfig(map);
         filename = config.getFilename();
         topic = config.getTopic();
         try {
@@ -45,6 +43,7 @@ public class LLNLDirectorySourceTask extends SourceTask {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
+        log.info(TAG, "poll");
         try {
             ArrayList<SourceRecord> records = new ArrayList<>();
             while (records.isEmpty()) {
