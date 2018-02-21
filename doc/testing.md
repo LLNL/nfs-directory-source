@@ -22,7 +22,7 @@ to include the absolute location of the packaged connectors jar file we built in
 plugin.path=share/java,~/src/kafkaconnectors/target
 ```
 
-Now you should be able to run `bin/test.sh` (and press Ctrl+C to exit the test consumer).
+Now you should be able to run `bin/test.sh`
 
 Correct output looks like:
 
