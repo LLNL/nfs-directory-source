@@ -1,12 +1,10 @@
 package com.github.llnl.kafka.connectors;
 
 import org.apache.avro.generic.GenericData;
-import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.JsonDecoder;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
@@ -25,10 +23,14 @@ public class LLNLFileSourceTask extends SourceTask {
 
     private String filename;
     private String topic;
-    private BufferedReader reader;
 
-    private org.apache.avro.Schema avro_schema;
-    private Schema connect_schema;
+    private InputStream fileStream;
+    private JsonDecoder avroJsonDecoder;
+    private SpecificDatumReader<GenericData.Record> avroDatumReader;
+    private GenericData.Record datum;
+
+    private org.apache.avro.Schema avroSchema;
+    private org.apache.kafka.connect.data.Schema connectSchema;
 
     private Long streamOffset = 0L;
 
@@ -43,16 +45,19 @@ public class LLNLFileSourceTask extends SourceTask {
         filename = config.getFilename();
         topic = config.getTopic();
         try {
-            reader = new BufferedReader(new FileReader(filename));
+            fileStream = new FileInputStream(filename);
 
-            avro_schema = new org.apache.avro.Schema.Parser().parse(config.getAvroSchema());
-            log.info("TASK avro schema: " + avro_schema);
+            avroSchema = new org.apache.avro.Schema.Parser().parse(config.getAvroSchema());
+            avroJsonDecoder = DecoderFactory.get().jsonDecoder(avroSchema, fileStream);
+            avroDatumReader = new SpecificDatumReader<>(avroSchema);
 
-            connect_schema = SchemaUtils.avroToKafkaSchema(avro_schema);
-            log.info("TASK kafka connect schema: " + connect_schema);
-            for (Field field : connect_schema.fields()) {
-                log.info("TASK kafka connect field name: " + field.name());
-                log.info("TASK kafka connect field type: " + field.schema().type());
+            connectSchema = SchemaUtils.avroToKafkaConnectSchema(avroSchema);
+
+            // Debug printing
+            log.debug("TASK avro schema: " + avroSchema);
+            log.debug("TASK kafka connect schema: " + connectSchema);
+            for (Field field : connectSchema.fields()) {
+                log.debug(String.format("TASK kafka connect field: %s %s", field.name(),field.schema().type()));
             }
 
         } catch (Exception ex) {
@@ -65,54 +70,26 @@ public class LLNLFileSourceTask extends SourceTask {
         try {
             ArrayList<SourceRecord> records = new ArrayList<>();
             while (records.isEmpty()) {
-                // TODO: use jsonDecoder(avro_schema, inputStream) instead of FileInputStream
-                String line = reader.readLine();
-                if (line != null) {
-                    while (line != null) {
+                try {
+                    while (true) {
+                        datum = avroDatumReader.read(datum, avroJsonDecoder);
+
                         Map sourcePartition = Collections.singletonMap("filename", filename);
                         Map sourceOffset = Collections.singletonMap("position", streamOffset);
 
-                        log.info("TASK line: " + line);
-                        log.info("TASK creating json decoder...");
+                        Struct struct = SchemaUtils.genericDataRecordToKafkaConnectStruct(datum, connectSchema);
 
-                        JsonDecoder jsonDecoder = DecoderFactory.get().jsonDecoder(avro_schema, line);
-
-                        log.info("TASK creating datum reader...");
-                        SpecificDatumReader<GenericData.Record> datumReader = new SpecificDatumReader<>(avro_schema);
-
-                        log.info("TASK reading datum...");
-                        GenericData.Record datum = datumReader.read(null, jsonDecoder);
-
-                        log.info("TASK datum: " + datum);
-
-                        // TODO: make function to convert GenericData.Record to a connect Struct (under a connect schema)
-                        Struct struct = new Struct(connect_schema);
-                        for (Field field : connect_schema.fields()) {
-                            String name = field.name();
-                            Object value = datum.get(field.name());
-
-                            if (value instanceof org.apache.avro.util.Utf8) {
-                                value = value.toString();
-                            }
-
-                            log.info("TASK adding field: " + name);
-                            log.info("TASK adding value: " + value);
-                            struct = struct.put(field.name(), value);
-                        }
-
-                        records.add(new SourceRecord(sourcePartition, sourceOffset, topic, connect_schema, struct));
+                        records.add(new SourceRecord(sourcePartition, sourceOffset, topic, connectSchema, struct));
                         streamOffset++;
-
-                        line = reader.readLine();
                     }
-                } else {
+                } catch (EOFException e) {
                     Thread.sleep(1);
+                } catch (IOException e) {
+                    log.error("Error parsing data: " + avroDatumReader.getSpecificData());
                 }
             }
             return records;
         } catch (Exception e) {
-            // Underlying stream was killed, probably as a result of calling stop. Allow to return
-            // null, and driving thread will handle any shutdown if necessary.
             log.error("Exception: " + e.getMessage());
         }
         return null;
@@ -122,7 +99,7 @@ public class LLNLFileSourceTask extends SourceTask {
     public void stop() {
         log.info("TASK stop");
         try {
-            reader.close();
+            fileStream.close();
         } catch (Exception ex) {
             log.error("TASK " + ex);
         }

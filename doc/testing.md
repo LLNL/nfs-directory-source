@@ -16,7 +16,7 @@ Modify the last line from the default:
 plugin.path=share/java
 ```
 
-to include the absolute location of the packaged connectors jar file we built in `./target`:
+...to include the absolute location of the packaged connectors jar file we built in `./target`:
 
 ```
 plugin.path=share/java,~/src/kafkaconnectors/target
@@ -27,6 +27,7 @@ Now you should be able to run `bin/test.sh`
 Correct output looks like:
 
 ```
+Clearing out confluent...
 Stopping connect
 connect is [DOWN]
 Stopping kafka-rest
@@ -37,7 +38,8 @@ Stopping kafka
 kafka is [DOWN]
 Stopping zookeeper
 zookeeper is [DOWN]
-Deleting: /var/folders/p8/vbk8nbcd5n594hgbc89xpnh4001_x9/T/confluent.VJypaxBK
+Deleting: /var/folders/p8/vbk8nbcd5n594hgbc89xpnh4001_x9/T/confluent.uuFF7auS
+Starting kafka connect (and dependencies)...
 Starting zookeeper
 zookeeper is [UP]
 Starting kafka
@@ -57,26 +59,6 @@ Available Connector Plugins:
   },
   {
     "class": "com.github.llnl.kafka.connectors.LLNLFileSourceConnector",
-    "type": "source",
-    "version": "1.0-SNAPSHOT"
-  },
-  {
-    "class": "com.github.llnl.kafka.connectors.MySinkConnector",
-    "type": "sink",
-    "version": "null"
-  },
-  {
-    "class": "com.github.llnl.kafka.connectors.MySinkConnector",
-    "type": "sink",
-    "version": "1.0-SNAPSHOT"
-  },
-  {
-    "class": "com.github.llnl.kafka.connectors.MySourceConnector",
-    "type": "source",
-    "version": "null"
-  },
-  {
-    "class": "com.github.llnl.kafka.connectors.MySourceConnector",
     "type": "source",
     "version": "1.0-SNAPSHOT"
   },
@@ -126,51 +108,39 @@ Available Connector Plugins:
     "version": "1.0.0-cp1"
   }
 ]
-Loading LLNLDirectorySourceConnector...
+Loading LLNLFileSourceConnector...
 {
-  "name": "MySourceConnector",
+  "name": "LLNLFileSourceConnector",
   "config": {
     "tasks.max": "1",
     "connector.class": "com.github.llnl.kafka.connectors.LLNLFileSourceConnector",
-    "filename": "test.csv",
+    "filename": "../src/test/resources/test_idstr.json",
+    "format": "json",
+    "format.options": "",
     "topic": "mytopic",
-    "name": "MySourceConnector"
+    "avro.schema": "{\"type\":\"record\",\"name\":\"idstr\",\"fields\":[{\"name\":\"id\",\"type\":\"int\"},{\"name\":\"str\",\"type\":\"string\"}]}",
+    "key.converter": "io.confluent.connect.avro.AvroConverter",
+    "key.converter.schema.registry.url": "http://localhost:8081",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter.schema.registry.url": "http://localhost:8081",
+    "name": "LLNLFileSourceConnector"
   },
   "tasks": [],
   "type": null
 }
-Active connectors:
+Status of LLNLFileSourceConnector:
 {
-  "error_code": 409,
-  "message": "Cannot complete request momentarily due to stale configuration (typically caused by a concurrent config change)"
-}
-Status of LLNLDirectorySourceConnector:
-{
-  "name": "MySourceConnector",
+  "name": "LLNLFileSourceConnector",
   "connector": {
     "state": "RUNNING",
-    "worker_id": "10.244.250.239:8083"
+    "worker_id": "10.247.240.121:8083"
   },
   "tasks": [],
   "type": "source"
 }
-Consuming from topic:
-
-1,2,3
-
-4,5,6
-Processed a total of 2 messages
-If you saw rows 1,2,3 and 4,5,6, the test was a success!
-Cleaning up...
-Stopping connect
-connect is [DOWN]
-Stopping kafka-rest
-kafka-rest is [DOWN]
-Stopping schema-registry
-schema-registry is [DOWN]
-Stopping kafka
-kafka is [DOWN]
-Stopping zookeeper
-zookeeper is [DOWN]
-Deleting: /var/folders/p8/vbk8nbcd5n594hgbc89xpnh4001_x9/T/confluent.rwDugQAr
+Sleeping for a second...
+test "idstr": Processed a total of 2 messages
+PASS
+Tests passed: 1
+Tests failed: 0
 ```

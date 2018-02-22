@@ -1,20 +1,16 @@
 package com.github.llnl.kafka.connectors;
 
-import org.apache.avro.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-
-
 public class SchemaUtils {
-    public static org.apache.kafka.connect.data.Schema avroToKafkaSchema(org.apache.avro.Schema avroSchema) {
+    public static org.apache.kafka.connect.data.Schema avroToKafkaConnectSchema(org.apache.avro.Schema avroSchema) {
 
-        Schema.Type type = avroSchema.getType();
+        org.apache.avro.Schema.Type type = avroSchema.getType();
 
-        if (type == Schema.Type.RECORD) {
+        if (type == org.apache.avro.Schema.Type.RECORD) {
 
-            SchemaBuilder builder = SchemaBuilder.struct();
+            org.apache.kafka.connect.data.SchemaBuilder builder = org.apache.kafka.connect.data.SchemaBuilder.struct();
 
-            for (Schema.Field field : avroSchema.getFields()) {
-                builder = builder.field(field.name(), avroToKafkaSchema(field.schema()));
+            for (org.apache.avro.Schema.Field field : avroSchema.getFields()) {
+                builder = builder.field(field.name(), avroToKafkaConnectSchema(field.schema()));
             }
 
             return builder.build();
@@ -22,22 +18,43 @@ public class SchemaUtils {
         } else {
             switch (avroSchema.getName()) {
                 case ("boolean"):
-                    return SchemaBuilder.bool();
+                    return org.apache.kafka.connect.data.SchemaBuilder.bool();
                 case ("bytes"):
-                    return SchemaBuilder.bytes();
+                    return org.apache.kafka.connect.data.SchemaBuilder.bytes();
                 case ("int"):
-                    return SchemaBuilder.int32();
+                    return org.apache.kafka.connect.data.SchemaBuilder.int32();
                 case ("long"):
-                    return SchemaBuilder.int64();
+                    return org.apache.kafka.connect.data.SchemaBuilder.int64();
                 case ("float"):
-                    return SchemaBuilder.float32();
+                    return org.apache.kafka.connect.data.SchemaBuilder.float32();
                 case ("double"):
-                    return SchemaBuilder.float64();
+                    return org.apache.kafka.connect.data.SchemaBuilder.float64();
                 case ("string"):
-                    return SchemaBuilder.string();
+                    return org.apache.kafka.connect.data.SchemaBuilder.string();
             }
         }
 
-        return null;
+        throw new UnsupportedOperationException(String.format("Cannot convert avro schema %s to Kafka Connect schema", avroSchema));
+    }
+
+    public static org.apache.kafka.connect.data.Struct
+    genericDataRecordToKafkaConnectStruct(org.apache.avro.generic.GenericData.Record record,
+                                          org.apache.kafka.connect.data.Schema connect_schema) {
+
+        org.apache.kafka.connect.data.Struct struct = new org.apache.kafka.connect.data.Struct(connect_schema);
+
+        for (org.apache.kafka.connect.data.Field field : connect_schema.fields()) {
+            String name = field.name();
+            Object value = record.get(field.name());
+
+            // Kafka connect wants String not Utf8
+            if (value instanceof org.apache.avro.util.Utf8) {
+                value = value.toString();
+            }
+
+            struct = struct.put(name, value);
+        }
+
+        return struct;
     }
 }
