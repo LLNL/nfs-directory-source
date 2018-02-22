@@ -51,12 +51,12 @@ connect is [UP]
 Available Connector Plugins: 
 [
   {
-    "class": "com.github.llnl.kafka.connectors.LLNLDirectorySourceConnector",
+    "class": "com.github.llnl.kafka.connectors.LLNLFileSourceConnector",
     "type": "source",
     "version": "null"
   },
   {
-    "class": "com.github.llnl.kafka.connectors.LLNLDirectorySourceConnector",
+    "class": "com.github.llnl.kafka.connectors.LLNLFileSourceConnector",
     "type": "source",
     "version": "1.0-SNAPSHOT"
   },
@@ -131,7 +131,7 @@ Loading LLNLDirectorySourceConnector...
   "name": "MySourceConnector",
   "config": {
     "tasks.max": "1",
-    "connector.class": "com.github.llnl.kafka.connectors.LLNLDirectorySourceConnector",
+    "connector.class": "com.github.llnl.kafka.connectors.LLNLFileSourceConnector",
     "filename": "test.csv",
     "topic": "mytopic",
     "name": "MySourceConnector"
