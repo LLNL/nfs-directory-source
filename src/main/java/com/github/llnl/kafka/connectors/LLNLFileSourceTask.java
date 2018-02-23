@@ -33,6 +33,7 @@ public class LLNLFileSourceTask extends SourceTask {
     private org.apache.kafka.connect.data.Schema connectSchema;
 
     private Long streamOffset = 0L;
+    private Long batchSize = 1000L;
 
     @Override
     public String version() {
@@ -47,7 +48,12 @@ public class LLNLFileSourceTask extends SourceTask {
         try {
             fileStream = new FileInputStream(filename);
 
-            avroSchema = new org.apache.avro.Schema.Parser().parse(config.getAvroSchema());
+            if (!config.getAvroSchema().isEmpty()) {
+                avroSchema = new org.apache.avro.Schema.Parser().parse(config.getAvroSchema());
+            } else {
+                avroSchema = new org.apache.avro.Schema.Parser().parse(new File(config.getAvroSchemaFilename()));
+            }
+
             avroJsonDecoder = DecoderFactory.get().jsonDecoder(avroSchema, fileStream);
             avroDatumReader = new SpecificDatumReader<>(avroSchema);
 
@@ -61,7 +67,7 @@ public class LLNLFileSourceTask extends SourceTask {
             }
 
         } catch (Exception ex) {
-            log.error("TASK " + ex);
+            log.error("TASK ", ex);
         }
     }
 
@@ -69,28 +75,28 @@ public class LLNLFileSourceTask extends SourceTask {
     public List<SourceRecord> poll() throws InterruptedException {
         try {
             ArrayList<SourceRecord> records = new ArrayList<>();
-            while (records.isEmpty()) {
+            for (int i = 0; i < batchSize; i++) {
+
                 try {
-                    while (true) {
-                        datum = avroDatumReader.read(datum, avroJsonDecoder);
-
-                        Map sourcePartition = Collections.singletonMap("filename", filename);
-                        Map sourceOffset = Collections.singletonMap("position", streamOffset);
-
-                        Struct struct = SchemaUtils.genericDataRecordToKafkaConnectStruct(datum, connectSchema);
-
-                        records.add(new SourceRecord(sourcePartition, sourceOffset, topic, connectSchema, struct));
-                        streamOffset++;
-                    }
+                    datum = avroDatumReader.read(datum, avroJsonDecoder);
                 } catch (EOFException e) {
-                    Thread.sleep(1);
+                    break;
                 } catch (IOException e) {
                     log.error("Error parsing data: " + avroDatumReader.getSpecificData());
+                    continue;
                 }
+
+                Map sourcePartition = Collections.singletonMap("filename", filename);
+                Map sourceOffset = Collections.singletonMap("position", streamOffset);
+
+                Struct struct = SchemaUtils.genericDataRecordToKafkaConnectStruct(datum, connectSchema);
+
+                records.add(new SourceRecord(sourcePartition, sourceOffset, topic, connectSchema, struct));
+                streamOffset++;
             }
             return records;
         } catch (Exception e) {
-            log.error("Exception: " + e.getMessage());
+            log.error("TASK ", e);
         }
         return null;
     }
@@ -101,7 +107,7 @@ public class LLNLFileSourceTask extends SourceTask {
         try {
             fileStream.close();
         } catch (Exception ex) {
-            log.error("TASK " + ex);
+            log.error("TASK ", ex);
         }
     }
 }

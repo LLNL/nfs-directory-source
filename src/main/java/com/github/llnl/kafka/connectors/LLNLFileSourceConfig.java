@@ -38,19 +38,23 @@ public class LLNLFileSourceConfig extends AbstractConfig {
             "    {\"name\": \"str\", \"type\": \"string\"},\n" +
             "  ]\n" +
             "}";
+    private static final String AVRO_SCHEMA_FILENAME = "avro.schema.filename";
+    private static final String AVRO_SCHEMA_FILENAME_DOC = "Avro schema filename.";
 
     public static ConfigDef conf() {
         return new ConfigDef()
                 .define(FILENAME, Type.STRING, Importance.HIGH, FILENAME_DOC)
                 .define(TOPIC, Type.STRING, Importance.HIGH, TOPIC_DOC)
                 .define(FORMAT, Type.STRING, Importance.HIGH, FORMAT_DOC)
-                .define(FORMAT_OPTIONS, Type.STRING, Importance.LOW, FORMAT_OPTIONS_DOC)
-                .define(AVRO_SCHEMA, Type.STRING, Importance.HIGH, AVRO_SCHEMA_DOC)
+                .define(FORMAT_OPTIONS, Type.STRING, "", Importance.LOW, FORMAT_OPTIONS_DOC)
+                .define(AVRO_SCHEMA, Type.STRING, "", Importance.HIGH, AVRO_SCHEMA_DOC)
+                .define(AVRO_SCHEMA_FILENAME, Type.STRING, "", Importance.HIGH, AVRO_SCHEMA_FILENAME_DOC)
                 ;
     }
 
     public String getFilename() { return this.getString(FILENAME); }
     public String getTopic() { return this.getString(TOPIC); }
     public String getAvroSchema() { return this.getString(AVRO_SCHEMA); }
+    public String getAvroSchemaFilename() { return this.getString(AVRO_SCHEMA_FILENAME); }
 }
 

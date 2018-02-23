@@ -1,45 +1,72 @@
 #!/usr/bin/env bash
 
-command -v confluent >/dev/null 2>&1 || {
-   echo >&2 "confluent not available in PATH! exiting..."
-   exit 1
+# CD to the location of this executable
+cd $(dirname "${BASH_SOURCE[0]}")
+TEST_RESOURCES="../src/test/resources/"
+
+function init () {
+
+    # Check for confluent in PATH
+    command -v confluent >/dev/null 2>&1 || {
+       echo >&2 "confluent not available in PATH! exiting..."
+       exit 1
+    }
+
+    echo "Clearing out confluent..."
+    confluent destroy
+
+    echo "Starting kafka connect (and dependencies)..."
+    confluent start connect
+
+    echo -n "Testing whether LLNLFileSourceConnector is available..."
+    confluent list plugins | grep LLNLFileSourceConnector > /dev/null 2>&1
+    if [ "$?" -eq 0 ]
+    then
+        echo "found!"
+    else
+        echo "not found!"
+        echo "Aborting..."
+        exit 1
+    fi
 }
-
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-cd ${DIR}
-
-echo "Clearing out confluent..."
-confluent destroy
-
-echo "Starting kafka connect (and dependencies)..."
-confluent start connect
-
-confluent list plugins
-
-echo "Loading LLNLFileSourceConnector..."
-confluent load LLNLFileSourceConnector -d ../src/test/resources/test_idstr.properties
-
-echo "Status of LLNLFileSourceConnector:"
-confluent status LLNLFileSourceConnector
-
-echo "Sleeping for a second..."
-sleep 1
 
 PASSED=0
 FAILED=0
 
-echo -n "test \"idstr\": "
-kafka-avro-console-consumer --bootstrap-server localhost:9092 --topic mytopic \
-    --from-beginning --max-messages 2 --timeout-ms 10 | diff ../src/test/resources/test_idstr.json -
-if [ "$?" -eq 0 ]
-then
-    echo "PASS"
-    PASSED=$(expr ${PASSED} + 1)
-else
-    echo "FAIL"
-    FAILED=$(expr ${FAILED} + 1)
-fi
+function test_filesource () {
+    NAME=$1
+    TOPIC="${NAME}_topic"
+    DATA_FILE="${TEST_RESOURCES}/${NAME}.json"
+    PROPERTIES_FILE="${TEST_RESOURCES}/${NAME}.properties"
+
+    echo "Loading test connector: $NAME"
+    confluent load ${NAME} -d ${PROPERTIES_FILE}
+
+    echo -n "Validating..."
+    kafka-avro-console-consumer --bootstrap-server localhost:9092 --topic ${TOPIC} \
+        --from-beginning --max-messages 2 --timeout-ms 5000 2> /dev/null | \
+        diff ${DATA_FILE} - > /dev/null 2>&1
+
+    if [ "$?" -eq 0 ]
+    then
+        echo "PASS"
+        PASSED=$(expr ${PASSED} + 1)
+    else
+        echo "FAIL"
+        FAILED=$(expr ${FAILED} + 1)
+    fi
+}
+
+echo "========== INITIALIZING TEST STATE ==========="
+
+init
+
+echo "========== RUNNING TESTS ==========="
+
+test_filesource "test_idstr"
+test_filesource "test_alltypes"
+
+echo "========== TEST RESULTS ==========="
 
 echo "Tests passed: $PASSED"
 echo "Tests failed: $FAILED"
