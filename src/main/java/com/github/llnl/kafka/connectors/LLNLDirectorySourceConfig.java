@@ -7,18 +7,17 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 
 import java.util.Map;
 
+public class LLNLDirectorySourceConfig extends AbstractConfig {
 
-public class LLNLFileSourceConfig extends AbstractConfig {
-
-    public LLNLFileSourceConfig(ConfigDef config, Map<String, String> parsedConfig) {
+    public LLNLDirectorySourceConfig(ConfigDef config, Map<String, String> parsedConfig) {
         super(config, parsedConfig);
     }
-    public LLNLFileSourceConfig(Map<String, String> parsedConfig) {
+    public LLNLDirectorySourceConfig(Map<String, String> parsedConfig) {
         this(conf(), parsedConfig);
     }
 
-    private static final String FILENAME = "filename";
-    private static final String FILENAME_DOC = "The name of the file to read from.";
+    private static final String DIRNAME = "dirname";
+    private static final String DIRNAME_DOC = "The name of the directory to read from.";
     private static final String TOPIC = "topic";
     private static final String TOPIC_DOC = "The name of the topic to stream to.";
     private static final String FORMAT = "format";
@@ -45,7 +44,7 @@ public class LLNLFileSourceConfig extends AbstractConfig {
 
     public static ConfigDef conf() {
         return new ConfigDef()
-                .define(FILENAME, Type.STRING, Importance.HIGH, FILENAME_DOC)
+                .define(DIRNAME, Type.STRING, Importance.HIGH, DIRNAME_DOC)
                 .define(TOPIC, Type.STRING, Importance.HIGH, TOPIC_DOC)
                 .define(FORMAT, Type.STRING, Importance.HIGH, FORMAT_DOC)
                 .define(FORMAT_OPTIONS, Type.STRING, "", Importance.LOW, FORMAT_OPTIONS_DOC)
@@ -55,7 +54,7 @@ public class LLNLFileSourceConfig extends AbstractConfig {
                 ;
     }
 
-    public String getFilename() { return this.getString(FILENAME); }
+    public String getDirname() { return this.getString(DIRNAME); }
     public String getTopic() { return this.getString(TOPIC); }
     public String getAvroSchema() { return this.getString(AVRO_SCHEMA); }
     public String getAvroSchemaFilename() { return this.getString(AVRO_SCHEMA_FILENAME); }

@@ -43,8 +43,9 @@ function test_filesource () {
     confluent load ${NAME} -d ${PROPERTIES_FILE}
 
     echo -n "Validating..."
+    LINES=$(wc -l ${DATA_FILE})
     kafka-avro-console-consumer --bootstrap-server localhost:9092 --topic ${TOPIC} \
-        --from-beginning --max-messages 2 --timeout-ms 5000 2> /dev/null | \
+        --from-beginning --max-messages ${LINES} --timeout-ms 5000 2> /dev/null | \
         diff ${DATA_FILE} - > /dev/null 2>&1
 
     if [ "$?" -eq 0 ]
@@ -65,6 +66,8 @@ echo "========== RUNNING TESTS ==========="
 
 test_filesource "test_idstr"
 test_filesource "test_alltypes"
+
+test_filesource "test_idstr_dir"
 
 echo "========== TEST RESULTS ==========="
 

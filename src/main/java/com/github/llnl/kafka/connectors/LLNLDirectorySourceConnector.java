@@ -10,10 +10,10 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class LLNLFileSourceConnector extends SourceConnector {
-    private static Logger log = LoggerFactory.getLogger(LLNLFileSourceConnector.class);
+public class LLNLDirectorySourceConnector extends SourceConnector {
+    private static Logger log = LoggerFactory.getLogger(LLNLDirectorySourceConnector.class);
 
-    private LLNLFileSourceConfig config;
+    private LLNLDirectorySourceConfig config;
 
     @Override
     public String version() {
@@ -22,12 +22,12 @@ public class LLNLFileSourceConnector extends SourceConnector {
 
     @Override
     public void start(Map<String, String> props) {
-        config = new LLNLFileSourceConfig(props);
+        config = new LLNLDirectorySourceConfig(props);
     }
 
     @Override
     public Class<? extends Task> taskClass() {
-        return LLNLFileSourceTask.class;
+        return LLNLDirectorySourceTask.class;
     }
 
     @Override
@@ -40,7 +40,7 @@ public class LLNLFileSourceConnector extends SourceConnector {
 
     @Override
     public ConfigDef config() {
-        return LLNLFileSourceConfig.conf();
+        return LLNLDirectorySourceConfig.conf();
     }
 
     @Override
@@ -59,3 +59,4 @@ public class LLNLFileSourceConnector extends SourceConnector {
         return new Config(configValues);
     }
 }
+

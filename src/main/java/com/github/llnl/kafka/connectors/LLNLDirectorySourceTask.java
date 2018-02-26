@@ -10,16 +10,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-
-// TODO: handle file not found
-// TODO: multiple tasks, thread safety
-
-public class LLNLFileSourceTask extends SourceTask {
-    private static final Logger log = LoggerFactory.getLogger(LLNLFileSourceTask.class);
+public class LLNLDirectorySourceTask extends SourceTask {
+    private static final Logger log = LoggerFactory.getLogger(LLNLDirectorySourceTask.class);
     private String TAG = getClass().getName() + ": ";
 
-    private ConnectFileReader reader;
     private Long streamOffset = 0L;
+
+    private ConnectDirectoryReader reader;
 
     @Override
     public String version() {
@@ -28,9 +25,8 @@ public class LLNLFileSourceTask extends SourceTask {
 
     @Override
     public void start(Map<String, String> map) {
-        LLNLFileSourceConfig config = new LLNLFileSourceConfig(map);
+        LLNLDirectorySourceConfig config = new LLNLDirectorySourceConfig(map);
         try {
-
             org.apache.avro.Schema avroSchema;
             if (!config.getAvroSchema().isEmpty()) {
                 avroSchema = new org.apache.avro.Schema.Parser().parse(config.getAvroSchema());
@@ -38,8 +34,7 @@ public class LLNLFileSourceTask extends SourceTask {
                 avroSchema = new org.apache.avro.Schema.Parser().parse(new File(config.getAvroSchemaFilename()));
             }
 
-            reader = new ConnectFileReader(config.getFilename(), config.getTopic(), avroSchema, config.getBatchSize());
-
+            reader = new ConnectDirectoryReader(config.getDirname(), config.getTopic(), avroSchema, config.getBatchSize());
         } catch (Exception ex) {
             log.error(TAG, ex);
         }
@@ -67,3 +62,4 @@ public class LLNLFileSourceTask extends SourceTask {
         }
     }
 }
+
