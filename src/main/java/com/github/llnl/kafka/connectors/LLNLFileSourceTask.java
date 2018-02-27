@@ -7,19 +7,22 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
 
 // TODO: handle file not found
 // TODO: multiple tasks, thread safety
 
 public class LLNLFileSourceTask extends SourceTask {
     private static final Logger log = LoggerFactory.getLogger(LLNLFileSourceTask.class);
-    private String TAG = getClass().getName() + ": ";
+    private static final String TAG = LLNLFileSourceTask.class.getName() + ": ";
+    private static final String PARTITION_FIELD = "filename";
+    private static final String OFFSET_FIELD = "position";
 
+    private Long streamOffset = null;
+    private String canonicalFilename;
     private ConnectFileReader reader;
-    private Long streamOffset = 0L;
 
     @Override
     public String version() {
@@ -31,6 +34,8 @@ public class LLNLFileSourceTask extends SourceTask {
         LLNLFileSourceConfig config = new LLNLFileSourceConfig(map);
         try {
 
+            String relativeFilename = config.getFilename();
+
             org.apache.avro.Schema avroSchema;
             if (!config.getAvroSchema().isEmpty()) {
                 avroSchema = new org.apache.avro.Schema.Parser().parse(config.getAvroSchema());
@@ -38,7 +43,15 @@ public class LLNLFileSourceTask extends SourceTask {
                 avroSchema = new org.apache.avro.Schema.Parser().parse(new File(config.getAvroSchemaFilename()));
             }
 
-            reader = new ConnectFileReader(config.getFilename(), config.getTopic(), avroSchema, config.getBatchSize());
+            reader = new ConnectFileReader(
+                    relativeFilename,
+                    config.getTopic(),
+                    avroSchema,
+                    config.getBatchSize(),
+                    PARTITION_FIELD,
+                    OFFSET_FIELD);
+
+            canonicalFilename = reader.getCanonicalFilename();
 
         } catch (Exception ex) {
             log.error(TAG, ex);
@@ -47,9 +60,12 @@ public class LLNLFileSourceTask extends SourceTask {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
+
+        ArrayList<SourceRecord> records = new ArrayList<>();
+        streamOffset = ConnectUtils.getStreamOffset(context, PARTITION_FIELD, OFFSET_FIELD, canonicalFilename);
+
         try {
-            ArrayList<SourceRecord> records = new ArrayList<>();
-            streamOffset += reader.read(records, streamOffset);
+            streamOffset += reader.read(records, canonicalFilename, streamOffset);
             return records;
         } catch (Exception e) {
             log.error(TAG, e);

@@ -33,7 +33,7 @@ function init () {
 PASSED=0
 FAILED=0
 
-function test_filesource () {
+function test_source () {
     NAME=$1
     TOPIC="${NAME}_topic"
     DATA_FILE="${TEST_RESOURCES}/${NAME}.json"
@@ -64,10 +64,9 @@ init
 
 echo "========== RUNNING TESTS ==========="
 
-test_filesource "test_idstr"
-test_filesource "test_alltypes"
-
-test_filesource "test_idstr_dir"
+test_source "test_idstr"
+test_source "test_alltypes"
+test_source "test_idstr_dir"
 
 echo "========== TEST RESULTS ==========="
 

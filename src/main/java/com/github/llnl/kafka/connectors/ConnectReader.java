@@ -8,7 +8,7 @@ public abstract class ConnectReader {
 
     private Long batchSize;
 
-    abstract Long read(List<SourceRecord> records, Long streamOffset);
+    abstract Long read(List<SourceRecord> records, String streamPartition, Long streamOffset);
     abstract void close();
 
 }
