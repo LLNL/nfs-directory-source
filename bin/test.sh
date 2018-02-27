@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# TODO: figure out how to use an actual testing framework...
+
 # CD to the location of this executable
 cd $(dirname "${BASH_SOURCE[0]}")
 TEST_RESOURCES="../src/test/resources/"
@@ -67,6 +69,16 @@ echo "========== RUNNING TESTS ==========="
 test_source "test_idstr"
 test_source "test_alltypes"
 test_source "test_idstr_dir"
+
+# echo "Adding new file to source directory..."
+# NEW_FILE="${TEST_RESOURCES}/test_idstr_dir/newFile.json"
+# echo {\"id\":5,\"str\":\"five\"} > ${NEW_FILE}
+#
+# echo "Consuming again..."
+# kafka-avro-console-consumer --bootstrap-server localhost:9092 --topic "test_idstr_dir_topic" \
+#    --from-beginning --max-messages 5 --timeout-ms 5000
+
+# rm ${NEW_FILE}
 
 echo "========== TEST RESULTS ==========="
 

@@ -6,6 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.file.*;
+
+import static java.nio.file.StandardWatchEventKinds.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +22,7 @@ public class LLNLDirectorySourceTask extends SourceTask {
     private Long streamOffset = 0L;
     private String canonicalDirname;
 
+    private WatchService service;
     private ConnectDirectoryReader reader;
 
     @Override
@@ -48,7 +52,14 @@ public class LLNLDirectorySourceTask extends SourceTask {
 
             canonicalDirname = reader.getCanonicalDirname();
 
-            // TODO: create a directory watch callback here
+            log.info(TAG + "From directory {}, added all files: {}",
+                    canonicalDirname, String.join(":",reader.getFilenames()));
+
+            Path path = reader.getDirPath();
+            FileSystem fs = path.getFileSystem();
+
+            service = fs.newWatchService();
+            path.register(service, ENTRY_CREATE, ENTRY_DELETE);
 
         } catch (Exception ex) {
             log.error(TAG, ex);
@@ -57,7 +68,33 @@ public class LLNLDirectorySourceTask extends SourceTask {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
-        // TODO: if directory watch found something, reconfigure reader here
+
+        // Check directory for files added/removed
+        WatchKey key = service.poll();
+        if (key != null) {
+            Path dirPath = (Path) key.watchable();
+            // TODO: if dirPath is deleted, die!
+            for (WatchEvent event : key.pollEvents()) {
+                try {
+                    WatchEvent.Kind kind = event.kind();
+
+                    if (kind == ENTRY_CREATE) {
+                        Path newPath = dirPath.resolve((Path) event.context());
+                        File newFile = newPath.toFile();
+                        reader.addFile(newFile);
+                        log.info(TAG + "Added new file: {}", newFile.getName());
+                    } else if (kind == ENTRY_DELETE) {
+                        Path deletedPath = dirPath.resolve((Path) event.context());
+                        File deletedFile = deletedPath.toFile();
+                        reader.removeFile(deletedFile);
+                        log.info(TAG + "Removed deleted file: {}", deletedFile.getName());
+                    }
+
+                } catch (IOException ex) {
+                    log.error(TAG, ex);
+                }
+            }
+        }
 
         ArrayList<SourceRecord> records = new ArrayList<>();
         streamOffset = ConnectUtils.getStreamOffset(context, PARTITION_FIELD, OFFSET_FIELD, canonicalDirname);
