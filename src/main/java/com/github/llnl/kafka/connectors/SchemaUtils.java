@@ -1,7 +1,7 @@
 package com.github.llnl.kafka.connectors;
 
-public class SchemaUtils {
-    public static org.apache.kafka.connect.data.Schema avroToKafkaConnectSchema(org.apache.avro.Schema avroSchema) {
+class SchemaUtils {
+    static org.apache.kafka.connect.data.Schema avroToKafkaConnectSchema(org.apache.avro.Schema avroSchema) {
 
         org.apache.avro.Schema.Type type = avroSchema.getType();
 
@@ -37,7 +37,7 @@ public class SchemaUtils {
         throw new UnsupportedOperationException(String.format("Cannot convert avro schema %s to Kafka Connect schema", avroSchema));
     }
 
-    public static org.apache.kafka.connect.data.Struct
+    static org.apache.kafka.connect.data.Struct
     genericDataRecordToKafkaConnectStruct(org.apache.avro.generic.GenericData.Record record,
                                           org.apache.kafka.connect.data.Schema connect_schema) {
 

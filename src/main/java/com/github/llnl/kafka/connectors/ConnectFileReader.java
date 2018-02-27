@@ -15,7 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class ConnectFileReader {
+class ConnectFileReader {
     private static final Logger log = LoggerFactory.getLogger(ConnectFileReader.class);
     private String TAG = getClass().getName() + ": ";
 

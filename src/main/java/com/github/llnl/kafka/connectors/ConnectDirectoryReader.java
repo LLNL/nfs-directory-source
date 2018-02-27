@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class ConnectDirectoryReader extends ConnectReader {
+class ConnectDirectoryReader extends ConnectReader {
     private static final Logger log = LoggerFactory.getLogger(ConnectFileReader.class);
 
     private Long batchSize;
-    private String absoluteDirname;
+    private String canonicalDirname;
 
     private Map<String, ConnectFileReader> fileReaders;
 
@@ -30,7 +30,7 @@ public class ConnectDirectoryReader extends ConnectReader {
         this.batchSize = batchSize;
 
         File dir = new File(dirname);
-        absoluteDirname = dir.getCanonicalPath();
+        canonicalDirname = dir.getCanonicalPath();
 
         File[] allFiles = dir.listFiles();
         if (allFiles != null) {
@@ -59,7 +59,7 @@ public class ConnectDirectoryReader extends ConnectReader {
     }
 
     String getCanonicalDirname() {
-        return absoluteDirname;
+        return canonicalDirname;
     }
 
     @Override

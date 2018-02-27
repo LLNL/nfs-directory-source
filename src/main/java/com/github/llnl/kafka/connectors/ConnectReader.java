@@ -4,7 +4,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import java.util.List;
 
-public abstract class ConnectReader {
+abstract class ConnectReader {
 
     private Long batchSize;
 
