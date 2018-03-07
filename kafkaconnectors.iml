@@ -42,5 +42,6 @@
     <orderEntry type="library" name="Maven: com.101tec:zkclient:0.10" level="project" />
     <orderEntry type="library" name="Maven: io.confluent:kafka-avro-serializer:4.0.0" level="project" />
     <orderEntry type="library" name="Maven: io.confluent:common-config:4.0.0" level="project" />
+    <orderEntry type="library" name="Maven: org.json:json:20180130" level="project" />
   </component>
 </module>

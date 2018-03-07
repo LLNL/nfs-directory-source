@@ -27,6 +27,7 @@ import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.errors.DataException;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.node.*;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -1141,6 +1142,14 @@ public class AvroData {
                      || value instanceof GenericEnumSymbol
                      || value instanceof Enum) {
             converted = value.toString();
+          } else if (value instanceof Map) {
+            // Schema says it's a string, but it's a map
+            Map<CharSequence, Object> original = (Map<CharSequence, Object>) value;
+            Map<CharSequence, Object> result = new HashMap<>(original.size());
+            for (Map.Entry<CharSequence, Object> entry : original.entrySet()) {
+              result.put(entry.getKey().toString(), entry.getValue().toString());
+            }
+            converted = new JSONObject(result).toString();
           } else {
             throw new DataException("Invalid class for string type, expecting String or "
                                     + "CharSequence but found " + value.getClass());
@@ -1376,7 +1385,9 @@ public class AvroData {
         break;
 
       case MAP:
-        builder = SchemaBuilder.map(Schema.STRING_SCHEMA, toConnectSchema(schema.getValueType()));
+        // KCQL can't deal with maps currently, define as string and convert maps to json strings later
+        // builder = SchemaBuilder.map(Schema.STRING_SCHEMA, toConnectSchema(schema.getValueType()));
+        builder = SchemaBuilder.string();
         break;
 
       case RECORD: {
