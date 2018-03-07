@@ -1,12 +1,14 @@
 package com.github.llnl.kafka.connectors;
 
+import io.confluent.connect.avro.AvroData;
+
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.JsonDecoder;
 import org.apache.avro.specific.SpecificDatumReader;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.source.SourceRecord;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,11 +34,18 @@ class ConnectFileReader {
     private SpecificDatumReader<GenericData.Record> avroDatumReader;
     private GenericData.Record datum;
 
-    ConnectFileReader(String filename, String topic,
+    private final org.apache.avro.Schema avroSchema;
+    private final AvroData schemaConverter;
+
+    ConnectFileReader(String filename,
+                      String topic,
                       org.apache.avro.Schema avroSchema,
                       Long batchSize,
                       String partitionField,
                       String offsetField) {
+
+        this.avroSchema = avroSchema;
+        this.schemaConverter = new AvroData(2);
 
         this.topic = topic;
         this.batchSize = batchSize;
@@ -48,17 +57,10 @@ class ConnectFileReader {
             this.canonicalFilename = file.getCanonicalPath();
 
             fileStream = new FileInputStream(file);
-            connectSchema = SchemaUtils.avroToKafkaConnectSchema(avroSchema);
+            connectSchema = schemaConverter.toConnectSchema(avroSchema);
 
             avroJsonDecoder = DecoderFactory.get().jsonDecoder(avroSchema, fileStream);
             avroDatumReader = new SpecificDatumReader<>(avroSchema);
-
-            log.debug(TAG + "avro schema: " + avroSchema);
-            log.debug(TAG + "kafka connect schema: " + connectSchema);
-            for (Field field : connectSchema.fields()) {
-                log.debug(String.format(TAG + "kafka connect field: %s %s", field.name(),field.schema().type()));
-            }
-
         } catch (Exception ex) {
             log.error(TAG, ex);
         }
@@ -80,9 +82,9 @@ class ConnectFileReader {
             Map sourcePartition = Collections.singletonMap(partitionField, streamPartition);
             Map sourceOffset = Collections.singletonMap(offsetField, offset);
 
-            Struct struct = SchemaUtils.genericDataRecordToKafkaConnectStruct(datum, connectSchema);
+            SchemaAndValue schemaAndValue = schemaConverter.toConnectData(avroSchema, datum);
 
-            records.add(new SourceRecord(sourcePartition, sourceOffset, topic, connectSchema, struct));
+            records.add(new SourceRecord(sourcePartition, sourceOffset, topic, connectSchema, schemaAndValue.value()));
             offset++;
         }
         return i;
