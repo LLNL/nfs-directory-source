@@ -82,9 +82,9 @@ class ConnectFileReader {
             Map sourcePartition = Collections.singletonMap(partitionField, streamPartition);
             Map sourceOffset = Collections.singletonMap(offsetField, offset);
 
-            SchemaAndValue schemaAndValue = schemaConverter.toConnectData(avroSchema, datum);
+            Object connectValue = schemaConverter.toConnectData(connectSchema, datum);
 
-            records.add(new SourceRecord(sourcePartition, sourceOffset, topic, connectSchema, schemaAndValue.value()));
+            records.add(new SourceRecord(sourcePartition, sourceOffset, topic, connectSchema, connectValue));
             offset++;
         }
         return i;

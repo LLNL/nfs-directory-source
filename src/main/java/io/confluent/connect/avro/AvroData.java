@@ -990,7 +990,7 @@ public class AvroData {
     return new SchemaAndValue(schema, toConnectData(schema, value));
   }
 
-  private Object toConnectData(Schema schema, Object value) {
+  public Object toConnectData(Schema schema, Object value) {
     validateSchemaValue(schema, value);
     if (value == null) {
       return null;
