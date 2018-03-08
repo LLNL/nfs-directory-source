@@ -16,13 +16,13 @@ import java.util.Map;
 public class LLNLDirectorySourceTask extends SourceTask {
     private static final Logger log = LoggerFactory.getLogger(LLNLDirectorySourceTask.class);
     private String TAG = getClass().getName() + ": ";
-    private static final String PARTITION_FIELD = "dirname";
+    private static final String PARTITION_FIELD = "filename";
     private static final String OFFSET_FIELD = "position";
 
     private Long streamOffset = 0L;
     private String canonicalDirname;
 
-    private WatchService service;
+    // private WatchService service;
     private ConnectDirectoryReader reader;
 
     @Override
@@ -52,14 +52,14 @@ public class LLNLDirectorySourceTask extends SourceTask {
 
             canonicalDirname = reader.getCanonicalDirname();
 
-            log.info(TAG + "From directory {}, added all files: {}",
-                    canonicalDirname, String.join(":",reader.getFilenames()));
+            // log.info(TAG + "From directory {}, added all files: {}",
+            //         canonicalDirname, String.join(":",reader.getFilenames()));
 
-            Path path = reader.getDirPath();
-            FileSystem fs = path.getFileSystem();
+            // Path path = reader.getDirPath();
+            // FileSystem fs = path.getFileSystem();
 
-            service = fs.newWatchService();
-            path.register(service, ENTRY_CREATE, ENTRY_DELETE);
+            // service = fs.newWatchService();
+            // path.register(service, ENTRY_CREATE, ENTRY_DELETE);
 
         } catch (Exception ex) {
             log.error(TAG, ex);
@@ -69,38 +69,38 @@ public class LLNLDirectorySourceTask extends SourceTask {
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
 
+        // TODO: directory watching does not work with NFS, check for new files inside of poll
+
         // Check directory for files added/removed
-        WatchKey key = service.poll();
-        if (key != null) {
-            Path dirPath = (Path) key.watchable();
-            // TODO: if dirPath is deleted, die!
-            for (WatchEvent event : key.pollEvents()) {
-                try {
-                    WatchEvent.Kind kind = event.kind();
+        // WatchKey key = service.poll();
+        // if (key != null) {
+        //     Path dirPath = (Path) key.watchable();
+        //     // TODO: if dirPath is deleted, die!
+        //     for (WatchEvent event : key.pollEvents()) {
+        //         try {
+        //             WatchEvent.Kind kind = event.kind();
 
-                    if (kind == ENTRY_CREATE) {
-                        Path newPath = dirPath.resolve((Path) event.context());
-                        File newFile = newPath.toFile();
-                        reader.addFile(newFile);
-                        log.info(TAG + "Added new file: {}", newFile.getName());
-                    } else if (kind == ENTRY_DELETE) {
-                        Path deletedPath = dirPath.resolve((Path) event.context());
-                        File deletedFile = deletedPath.toFile();
-                        reader.removeFile(deletedFile);
-                        log.info(TAG + "Removed deleted file: {}", deletedFile.getName());
-                    }
+        //             if (kind == ENTRY_CREATE) {
+        //                 Path newPath = dirPath.resolve((Path) event.context());
+        //                 File newFile = newPath.toFile();
+        //                 reader.addFile(newFile);
+        //                 log.info(TAG + "Added new file: {}", newFile.getName());
+        //             } else if (kind == ENTRY_DELETE) {
+        //                 Path deletedPath = dirPath.resolve((Path) event.context());
+        //                 File deletedFile = deletedPath.toFile();
+        //                 reader.removeFile(deletedFile);
+        //                 log.info(TAG + "Removed deleted file: {}", deletedFile.getName());
+        //             }
 
-                } catch (IOException ex) {
-                    log.error(TAG, ex);
-                }
-            }
-        }
+        //         } catch (IOException ex) {
+        //             log.error(TAG, ex);
+        //         }
+        // }
 
         ArrayList<SourceRecord> records = new ArrayList<>();
-        streamOffset = ConnectUtils.getStreamOffset(context, PARTITION_FIELD, OFFSET_FIELD, canonicalDirname);
 
         try {
-            streamOffset += reader.read(records, null, streamOffset);
+            reader.read(records, context);
             return records;
         } catch (Exception e) {
             log.error(TAG, e);

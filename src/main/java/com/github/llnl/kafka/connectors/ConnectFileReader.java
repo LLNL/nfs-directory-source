@@ -9,19 +9,24 @@ import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.source.SourceRecord;
 
+import org.apache.kafka.connect.source.SourceTask;
+import org.apache.kafka.connect.source.SourceTaskContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-class ConnectFileReader {
+class ConnectFileReader extends ConnectReader {
     private static final Logger log = LoggerFactory.getLogger(ConnectFileReader.class);
     private String TAG = getClass().getName() + ": ";
 
     private String canonicalFilename;
+    private Path canonicalPath;
     private String topic;
 
     private org.apache.kafka.connect.data.Schema connectSchema;
@@ -34,7 +39,6 @@ class ConnectFileReader {
     private SpecificDatumReader<GenericData.Record> avroDatumReader;
     private GenericData.Record datum;
 
-    private final org.apache.avro.Schema avroSchema;
     private final AvroData schemaConverter;
 
     ConnectFileReader(String filename,
@@ -44,7 +48,6 @@ class ConnectFileReader {
                       String partitionField,
                       String offsetField) {
 
-        this.avroSchema = avroSchema;
         this.schemaConverter = new AvroData(2);
 
         this.topic = topic;
@@ -54,6 +57,7 @@ class ConnectFileReader {
 
         try {
             File file = new File(filename);
+            this.canonicalPath = file.toPath().toRealPath();
             this.canonicalFilename = file.getCanonicalPath();
 
             fileStream = new FileInputStream(file);
@@ -66,20 +70,27 @@ class ConnectFileReader {
         }
     }
 
-    Long read(List<SourceRecord> records, String streamPartition, Long streamOffset) {
-        Long i, offset=streamOffset;
+    @Override
+    Long read(List<SourceRecord> records, SourceTaskContext context) {
+        Long i, offset=ConnectUtils.getStreamOffset(context, partitionField, offsetField, canonicalFilename);
         for (i = 0L; i < batchSize; i++) {
 
             try {
                 datum = avroDatumReader.read(datum, avroJsonDecoder);
             } catch (EOFException e) {
+                try {
+                    log.info(TAG + "Purging ingested file {}", canonicalFilename);
+                    Files.delete(canonicalPath);
+                } catch (IOException e1) {
+                    log.error(TAG + "Error deleting file {}", canonicalFilename);
+                }
                 break;
             } catch (IOException e) {
-                log.error(TAG + "Error parsing data: " + avroDatumReader.getSpecificData());
+                log.error(TAG + "Error parsing file {} at row {}: ", canonicalFilename, avroDatumReader.getData().toString());
                 continue;
             }
 
-            Map sourcePartition = Collections.singletonMap(partitionField, streamPartition);
+            Map sourcePartition = Collections.singletonMap(partitionField, canonicalFilename);
             Map sourceOffset = Collections.singletonMap(offsetField, offset);
 
             Object connectValue = schemaConverter.toConnectData(connectSchema, datum);

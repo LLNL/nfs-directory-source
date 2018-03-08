@@ -1,6 +1,7 @@
 package com.github.llnl.kafka.connectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.source.SourceTaskContext;
 
 import java.util.List;
 
@@ -8,7 +9,7 @@ abstract class ConnectReader {
 
     private Long batchSize;
 
-    abstract Long read(List<SourceRecord> records, String streamPartition, Long streamOffset);
+    abstract Long read(List<SourceRecord> records, SourceTaskContext context);
     abstract void close();
 
 }

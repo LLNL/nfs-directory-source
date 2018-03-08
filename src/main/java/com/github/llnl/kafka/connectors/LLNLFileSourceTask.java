@@ -19,8 +19,6 @@ public class LLNLFileSourceTask extends SourceTask {
     private static final String PARTITION_FIELD = "filename";
     private static final String OFFSET_FIELD = "position";
 
-    private Long streamOffset = null;
-    private String canonicalFilename;
     private ConnectFileReader reader;
 
     @Override
@@ -50,8 +48,6 @@ public class LLNLFileSourceTask extends SourceTask {
                     PARTITION_FIELD,
                     OFFSET_FIELD);
 
-            canonicalFilename = reader.getCanonicalFilename();
-
         } catch (Exception ex) {
             log.error(TAG, ex);
         }
@@ -61,10 +57,9 @@ public class LLNLFileSourceTask extends SourceTask {
     public List<SourceRecord> poll() throws InterruptedException {
 
         ArrayList<SourceRecord> records = new ArrayList<>();
-        streamOffset = ConnectUtils.getStreamOffset(context, PARTITION_FIELD, OFFSET_FIELD, canonicalFilename);
 
         try {
-            streamOffset += reader.read(records, canonicalFilename, streamOffset);
+            reader.read(records, context);
             return records;
         } catch (Exception e) {
             log.error(TAG, e);
