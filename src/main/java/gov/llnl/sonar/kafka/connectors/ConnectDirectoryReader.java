@@ -1,4 +1,4 @@
-package com.github.llnl.kafka.connectors;
+package gov.llnl.sonar.kafka.connectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
@@ -11,16 +11,23 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 class ConnectDirectoryReader extends ConnectReader {
-    private static final Logger log = LoggerFactory.getLogger(ConnectFileReader.class);
+    private static final Class myClass = ConnectDirectoryReader.class;
+    private static final Logger log = LoggerFactory.getLogger(myClass);
+    private final String TAG = myClass.getName() + ": ";
 
     private String canonicalDirname;
     private Path dirPath;
 
-    Supplier<Stream<ConnectFileReader>> fileReaderSupplier;
+    private Long filesPerBatch = 10L;
+
+    private Supplier<Stream<ConnectFileReader>> fileReaderSupplier;
+
+    private AtomicBoolean breakAndClose = new AtomicBoolean(false);
 
     private String uncheckedGetCanonicalPath(Path path) {
         try {
@@ -49,13 +56,13 @@ class ConnectDirectoryReader extends ConnectReader {
             throw new IOException(canonicalDirname + " is not a directory!");
         }
 
-        log.info("Adding all files in {}", canonicalDirname);
+        log.info(TAG + "Adding all files in {}", canonicalDirname);
 
         fileReaderSupplier = () -> {
             Stream<ConnectFileReader> fileReaderStream = null;
             try {
                  fileReaderStream = Files.walk(dirPath)
-                         .limit(20L)
+                         .limit(filesPerBatch)
                          .filter(Files::isRegularFile)
                          .map((Path p) -> new ConnectFileReader(
                                  uncheckedGetCanonicalPath(p),
@@ -73,14 +80,28 @@ class ConnectDirectoryReader extends ConnectReader {
 
     @Override
     Long read(List<SourceRecord> records, SourceTaskContext context) {
-        return fileReaderSupplier.get()
-                .map(reader -> {
-                    log.info("Ingesting file {}", reader.getCanonicalFilename());
-                    Long numRecords = reader.read(records, context);
-                    log.info("Read {} records from file {}", numRecords, reader.getCanonicalFilename());
-                    return numRecords;
-                })
-                .mapToLong(i -> i).sum();
+
+        try {
+
+            final Stream<ConnectFileReader> fileReaders = fileReaderSupplier.get();
+
+            return fileReaders.map(reader -> {
+
+                if (breakAndClose.get())
+                    throw new BreakException();
+
+                log.info(TAG + "Ingesting file {}", reader.getCanonicalFilename());
+                Long numRecordsFile = reader.read(records, context);
+                log.info(TAG + "Read {} records from file {}", numRecordsFile, reader.getCanonicalFilename());
+
+                return numRecordsFile;
+            }).mapToLong(l -> l).sum();
+
+        } catch (BreakException b) {
+            log.info(TAG + "Read interrupted, closing reader");
+        }
+
+        return -1L;
     }
 
     String getCanonicalDirname() {
@@ -89,7 +110,9 @@ class ConnectDirectoryReader extends ConnectReader {
 
     @Override
     void close() {
-        // do nothing
+        log.info(TAG + "Interrupting reader");
+        breakAndClose.set(true);
+        log.info(TAG + "Closed");
     }
 
 }

@@ -1,4 +1,4 @@
-package com.github.llnl.kafka.connectors;
+package gov.llnl.sonar.kafka.connectors;
 
 import io.confluent.connect.avro.AvroData;
 
@@ -6,10 +6,8 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.JsonDecoder;
 import org.apache.avro.specific.SpecificDatumReader;
-import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.source.SourceRecord;
 
-import org.apache.kafka.connect.source.SourceTask;
 import org.apache.kafka.connect.source.SourceTaskContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,10 +18,12 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 class ConnectFileReader extends ConnectReader {
-    private static final Logger log = LoggerFactory.getLogger(ConnectFileReader.class);
-    private String TAG = getClass().getName() + ": ";
+    private static final Class myClass = ConnectFileReader.class;
+    private static final Logger log = LoggerFactory.getLogger(myClass);
+    private final String TAG = myClass.getName() + ": ";
 
     private String canonicalFilename;
     private Path canonicalPath;
@@ -40,6 +40,8 @@ class ConnectFileReader extends ConnectReader {
     private GenericData.Record datum;
 
     private final AvroData schemaConverter;
+
+    private AtomicBoolean breakAndClose = new AtomicBoolean(false);
 
     ConnectFileReader(String filename,
                       String topic,
@@ -75,6 +77,9 @@ class ConnectFileReader extends ConnectReader {
         Long i, offset=ConnectUtils.getStreamOffset(context, partitionField, offsetField, canonicalFilename);
         for (i = 0L; i < batchSize; i++) {
 
+            if (breakAndClose.get())
+                break;
+
             try {
                 datum = avroDatumReader.read(datum, avroJsonDecoder);
             } catch (EOFException e) {
@@ -107,6 +112,7 @@ class ConnectFileReader extends ConnectReader {
 
     void close() {
         try {
+            breakAndClose.set(true);
             fileStream.close();
         } catch (Exception ex) {
             log.error(TAG, ex);

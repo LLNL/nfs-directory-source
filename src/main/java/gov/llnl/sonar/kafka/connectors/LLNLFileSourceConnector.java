@@ -1,9 +1,10 @@
-package com.github.llnl.kafka.connectors;
+package gov.llnl.sonar.kafka.connectors;
 
 import java.util.*;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceConnector;

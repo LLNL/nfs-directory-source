@@ -1,4 +1,4 @@
-package com.github.llnl.kafka.connectors;
+package gov.llnl.sonar.kafka.connectors;
 
 import java.util.*;
 

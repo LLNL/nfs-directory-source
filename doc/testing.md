@@ -58,7 +58,7 @@ Loading test connector: test_idstr
   "name": "test_idstr",
   "config": {
     "tasks.max": "1",
-    "connector.class": "com.github.llnl.kafka.connectors.LLNLFileSourceConnector",
+    "connector.class": "LLNLFileSourceConnector",
     "filename": "../src/test/resources/test_idstr.json",
     "format": "json",
     "format.options": "",
@@ -75,7 +75,7 @@ Loading test connector: test_alltypes
   "name": "test_alltypes",
   "config": {
     "tasks.max": "1",
-    "connector.class": "com.github.llnl.kafka.connectors.LLNLFileSourceConnector",
+    "connector.class": "LLNLFileSourceConnector",
     "filename": "../src/test/resources/test_alltypes.json",
     "format": "json",
     "format.options": "",
