@@ -2,13 +2,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.github.llnl.kafka.connectors</groupId>
+    <groupId>gov.llnl.sonar.kafka.connectors</groupId>
     <artifactId>sonar-connectors</artifactId>
     <version>alpha</version>
     <packaging>jar</packaging>
 
-    <name>kafka-connectors</name>
-    <description>A Kafka Connect Connector for kafka-connectors</description>
+    <name>sonar-kafka-connectors</name>
+    <description>Sonar Kafka Connectors</description>
 
     <properties>
         <kafka.version>0.10.2.1-cp2</kafka.version>
