@@ -1,6 +1,5 @@
 package gov.llnl.sonar.kafka.connectors;
 
-import io.confluent.connect.avro.AvroData;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.io.Decoder;
@@ -21,8 +20,6 @@ public class AvroFileStreamParser extends ConnectFileStreamParser {
                          Schema avroSchema) {
 
         super(avroSchema);
-
-        this.avroConnectConverter = new AvroData(2);
 
         try {
             decoder = DecoderFactory.get().jsonDecoder(avroSchema, in);
