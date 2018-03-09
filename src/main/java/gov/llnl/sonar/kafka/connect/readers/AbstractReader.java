@@ -1,4 +1,4 @@
-package gov.llnl.sonar.kafka.connectors;
+package gov.llnl.sonar.kafka.connect.readers;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
@@ -6,13 +6,13 @@ import org.apache.kafka.connect.source.SourceTaskContext;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-abstract class ConnectReader {
+abstract class AbstractReader {
 
     AtomicBoolean breakAndClose = new AtomicBoolean(false);
 
-    abstract Long read(List<SourceRecord> records, SourceTaskContext context);
+    public abstract Long read(List<SourceRecord> records, SourceTaskContext context);
 
-    void close() {
+    public void close() {
         breakAndClose.set(true);
     }
 

@@ -1,21 +1,20 @@
-package gov.llnl.sonar.kafka.connectors;
+package gov.llnl.sonar.kafka.connect.connectors;
 
+import gov.llnl.sonar.kafka.connect.util.VersionUtil;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class LLNLFileSourceConnector extends SourceConnector {
+public class LLNLDirectorySourceConnector extends SourceConnector {
 
-    private LLNLFileSourceConfig config;
+    private LLNLDirectorySourceConfig config;
 
     @Override
     public String version() {
@@ -24,12 +23,12 @@ public class LLNLFileSourceConnector extends SourceConnector {
 
     @Override
     public void start(Map<String, String> props) {
-        config = new LLNLFileSourceConfig(props);
+        config = new LLNLDirectorySourceConfig(props);
     }
 
     @Override
     public Class<? extends Task> taskClass() {
-        return LLNLFileSourceTask.class;
+        return LLNLDirectorySourceTask.class;
     }
 
     @Override
@@ -42,7 +41,7 @@ public class LLNLFileSourceConnector extends SourceConnector {
 
     @Override
     public ConfigDef config() {
-        return LLNLFileSourceConfig.conf();
+        return LLNLDirectorySourceConfig.conf();
     }
 
     @Override
@@ -50,7 +49,7 @@ public class LLNLFileSourceConnector extends SourceConnector {
         Config c = super.validate(connectorConfigs);
 
         List<ConfigValue> configValues = c.configValues();
-        if (!(connectorConfigs.containsKey("avro.schema") ^ connectorConfigs.containsKey("avro.schema.filename"))) {
+        if (connectorConfigs.containsKey("avro.schema") == connectorConfigs.containsKey("avro.schema.filename")) {
             for (ConfigValue cv : configValues) {
                 if (cv.name().equals("avro.schema")) {
                     cv.addErrorMessage("Connector requires either avro.schema or avro.schema.filename (and not both)!");
@@ -61,3 +60,4 @@ public class LLNLFileSourceConnector extends SourceConnector {
         return new Config(configValues);
     }
 }
+

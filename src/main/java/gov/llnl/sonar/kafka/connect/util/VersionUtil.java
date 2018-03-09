@@ -1,6 +1,6 @@
-package gov.llnl.sonar.kafka.connectors;
+package gov.llnl.sonar.kafka.connect.util;
 
-class VersionUtil {
+public class VersionUtil {
     public static String getVersion() {
         try {
             return VersionUtil.class.getPackage().getImplementationVersion();

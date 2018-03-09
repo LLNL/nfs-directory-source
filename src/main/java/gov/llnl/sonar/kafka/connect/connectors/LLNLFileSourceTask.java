@@ -1,5 +1,8 @@
-package gov.llnl.sonar.kafka.connectors;
+package gov.llnl.sonar.kafka.connect.connectors;
 
+import gov.llnl.sonar.kafka.connect.readers.FileReader;
+import gov.llnl.sonar.kafka.connect.util.VersionUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 
@@ -8,12 +11,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class LLNLDirectorySourceTask extends SourceTask implements Loggable {
+// TODO: handle file not found
+// TODO: multiple tasks, thread safety
 
+@Slf4j
+public class LLNLFileSourceTask extends SourceTask {
     private static final String PARTITION_FIELD = "filename";
     private static final String OFFSET_FIELD = "position";
 
-    private ConnectDirectoryReader reader;
+    private FileReader reader;
 
     @Override
     public String version() {
@@ -22,9 +28,10 @@ public class LLNLDirectorySourceTask extends SourceTask implements Loggable {
 
     @Override
     public void start(Map<String, String> map) {
-        LLNLDirectorySourceConfig config = new LLNLDirectorySourceConfig(map);
+        LLNLFileSourceConfig config = new LLNLFileSourceConfig(map);
         try {
-            String relativeDirname = config.getDirname();
+
+            String relativeFilename = config.getFilename();
 
             org.apache.avro.Schema avroSchema;
             if (!config.getAvroSchema().isEmpty()) {
@@ -33,17 +40,16 @@ public class LLNLDirectorySourceTask extends SourceTask implements Loggable {
                 avroSchema = new org.apache.avro.Schema.Parser().parse(new File(config.getAvroSchemaFilename()));
             }
 
-            reader = new ConnectDirectoryReader(relativeDirname,
-                                                config.getTopic(),
-                                                avroSchema,
-                                                config.getBatchSize(),
-                                                PARTITION_FIELD,
-                                                OFFSET_FIELD);
-
-            log.info(TAG + "Added directory {}", reader.getCanonicalDirname());
+            reader = new FileReader(
+                    relativeFilename,
+                    config.getTopic(),
+                    avroSchema,
+                    config.getBatchSize(),
+                    PARTITION_FIELD,
+                    OFFSET_FIELD);
 
         } catch (Exception ex) {
-            log.error(TAG, ex);
+            log.error(ex.getMessage());
         }
     }
 
@@ -53,24 +59,27 @@ public class LLNLDirectorySourceTask extends SourceTask implements Loggable {
         ArrayList<SourceRecord> records = new ArrayList<>();
 
         try {
-            Long numRecordsRead = reader.read(records, context);
-            log.info(TAG + "Read {} records from directory {}", numRecordsRead, reader.getCanonicalDirname());
-            return records;
-        } catch (Exception ex) {
-            log.error(TAG, ex);
-        }
 
+            reader.read(records, context);
+
+            if (records.isEmpty())
+                return null;
+
+            return records;
+
+        } catch (Exception ex) {
+            log.error(ex.getMessage());
+        }
         return null;
     }
 
     @Override
     public void stop() {
-        log.info(TAG + "Task stopping");
+        log.info("Task stopping");
         try {
             reader.close();
         } catch (Exception ex) {
-            log.error(TAG, ex);
+            log.error(ex.getMessage());
         }
     }
 }
-

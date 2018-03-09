@@ -1,4 +1,4 @@
-package gov.llnl.sonar.kafka.connectors;
+package gov.llnl.sonar.kafka.connect.connectors;
 
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.connector.ConnectorContext;

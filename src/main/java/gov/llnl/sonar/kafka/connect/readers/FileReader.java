@@ -1,10 +1,14 @@
-package gov.llnl.sonar.kafka.connectors;
+package gov.llnl.sonar.kafka.connect.readers;
 
+import gov.llnl.sonar.kafka.connect.parsers.AvroFileStreamParser;
+import gov.llnl.sonar.kafka.connect.util.ConnectUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
 
-import java.io.*;
+import java.io.EOFException;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -12,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-class ConnectFileReader extends ConnectReader {
+public class FileReader extends AbstractReader {
     private String canonicalFilename;
     private Path canonicalPath;
     private String topic;
@@ -21,9 +25,9 @@ class ConnectFileReader extends ConnectReader {
     private String partitionField;
     private String offsetField;
 
-    private AvroConnectFileStreamParser avroStreamParser;
+    private AvroFileStreamParser avroStreamParser;
 
-    ConnectFileReader(String filename,
+    public FileReader(String filename,
                       String topic,
                       org.apache.avro.Schema avroSchema,
                       Long batchSize,
@@ -40,7 +44,7 @@ class ConnectFileReader extends ConnectReader {
             this.canonicalPath = file.toPath().toRealPath();
             this.canonicalFilename = file.getCanonicalPath();
 
-            this.avroStreamParser = new AvroConnectFileStreamParser(canonicalFilename, avroSchema);
+            this.avroStreamParser = new AvroFileStreamParser(canonicalFilename, avroSchema);
 
         } catch (Exception ex) {
             log.error(ex.getMessage());
@@ -48,8 +52,8 @@ class ConnectFileReader extends ConnectReader {
     }
 
     @Override
-    Long read(List<SourceRecord> records, SourceTaskContext context) {
-        Long i, offset=ConnectUtils.getStreamOffset(context, partitionField, offsetField, canonicalFilename);
+    public Long read(List<SourceRecord> records, SourceTaskContext context) {
+        Long i, offset = ConnectUtils.getStreamOffset(context, partitionField, offsetField, canonicalFilename);
         for (i = 0L; i < batchSize; i++) {
 
             if (breakAndClose.get())
@@ -60,11 +64,16 @@ class ConnectFileReader extends ConnectReader {
             try {
                 Object parsedValue = avroStreamParser.read();
 
-                Map sourcePartition = Collections.singletonMap(partitionField, canonicalFilename);
-                Map sourceOffset = Collections.singletonMap(offsetField, offset);
+                if (parsedValue != null) {
 
-                records.add(new SourceRecord(sourcePartition, sourceOffset, topic, avroStreamParser.connectSchema, parsedValue));
-                offset++;
+                    Map sourcePartition = Collections.singletonMap(partitionField, canonicalFilename);
+                    Map sourceOffset = Collections.singletonMap(offsetField, offset);
+
+                    records.add(new SourceRecord(sourcePartition, sourceOffset, topic, avroStreamParser.connectSchema, parsedValue));
+                    offset++;
+
+                }
+
             } catch (EOFException e) {
                 try {
                     log.info("Purging ingested file {}", canonicalFilename);
@@ -83,7 +92,8 @@ class ConnectFileReader extends ConnectReader {
         return canonicalFilename;
     }
 
-    void close() {
+    @Override
+    public void close() {
         super.close();
         try {
             avroStreamParser.close();

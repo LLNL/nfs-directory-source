@@ -1,4 +1,4 @@
-package gov.llnl.sonar.kafka.connectors;
+package gov.llnl.sonar.kafka.connect.parsers;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
@@ -10,7 +10,7 @@ import org.apache.avro.specific.SpecificDatumReader;
 import java.io.*;
 
 @Slf4j
-public class AvroConnectFileStreamParser extends ConnectFileStreamParser {
+public class AvroFileStreamParser extends AbstractFileStreamParser {
 
     private FileInputStream fileStream;
 
@@ -18,7 +18,7 @@ public class AvroConnectFileStreamParser extends ConnectFileStreamParser {
     private SpecificDatumReader<GenericData.Record> datumReader;
     private GenericData.Record datum;
 
-    AvroConnectFileStreamParser(String filename,
+    public AvroFileStreamParser(String filename,
                                 Schema avroSchema) {
 
         super(avroSchema);
@@ -43,6 +43,7 @@ public class AvroConnectFileStreamParser extends ConnectFileStreamParser {
             throw e;
         } catch (IOException e) {
             log.error("Error parsing value {}: ", datumReader.getData().toString());
+            return null;
         }
 
         return avroConnectConverter.toConnectData(connectSchema, datum);

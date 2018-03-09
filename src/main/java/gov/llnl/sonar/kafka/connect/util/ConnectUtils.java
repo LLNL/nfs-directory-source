@@ -1,12 +1,12 @@
-package gov.llnl.sonar.kafka.connectors;
+package gov.llnl.sonar.kafka.connect.util;
 
 import org.apache.kafka.connect.source.SourceTaskContext;
 
 import java.util.Collections;
 import java.util.Map;
 
-class ConnectUtils {
-    static Long getStreamOffset(SourceTaskContext context,
+public class ConnectUtils {
+    public static Long getStreamOffset(SourceTaskContext context,
                                 String PARTITION_FIELD,
                                 String OFFSET_FIELD,
                                 String partition) {
@@ -14,7 +14,7 @@ class ConnectUtils {
         Map<String, Object> offset = context.offsetStorageReader()
                 .offset(Collections.singletonMap(PARTITION_FIELD, partition));
 
-        Long streamOffset = null;
+        Long streamOffset;
 
         if (offset != null) {
             Object lastOffset = offset.get(OFFSET_FIELD);

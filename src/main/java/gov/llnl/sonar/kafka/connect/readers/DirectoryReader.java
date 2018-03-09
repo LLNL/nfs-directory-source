@@ -1,5 +1,6 @@
-package gov.llnl.sonar.kafka.connectors;
+package gov.llnl.sonar.kafka.connect.readers;
 
+import gov.llnl.sonar.kafka.connect.exceptions.BreakException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
@@ -14,13 +15,13 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 @Slf4j
-class ConnectDirectoryReader extends ConnectReader {
+public class DirectoryReader extends AbstractReader {
     private String canonicalDirname;
     private Path dirPath;
 
     private Long filesPerBatch = 10L;
 
-    private Supplier<Stream<ConnectFileReader>> fileReaderSupplier;
+    private Supplier<Stream<FileReader>> fileReaderSupplier;
 
     private String uncheckedGetCanonicalPath(Path path) {
         try {
@@ -31,7 +32,7 @@ class ConnectDirectoryReader extends ConnectReader {
         }
     }
 
-    ConnectDirectoryReader(String dirname,
+    public DirectoryReader(String dirname,
                            String topic,
                            org.apache.avro.Schema avroSchema,
                            Long batchSize,
@@ -52,12 +53,12 @@ class ConnectDirectoryReader extends ConnectReader {
         log.info("Adding all files in {}", canonicalDirname);
 
         fileReaderSupplier = () -> {
-            Stream<ConnectFileReader> fileReaderStream = null;
+            Stream<FileReader> fileReaderStream = null;
             try {
                  fileReaderStream = Files.walk(dirPath)
                          .filter(Files::isRegularFile)
                          .limit(filesPerBatch)
-                         .map((Path p) -> new ConnectFileReader(
+                         .map((Path p) -> new FileReader(
                                  uncheckedGetCanonicalPath(p),
                                  topic,
                                  avroSchema,
@@ -72,11 +73,11 @@ class ConnectDirectoryReader extends ConnectReader {
     }
 
     @Override
-    Long read(List<SourceRecord> records, SourceTaskContext context) {
+    public Long read(List<SourceRecord> records, SourceTaskContext context) {
 
         try {
 
-            final Stream<ConnectFileReader> fileReaders = fileReaderSupplier.get();
+            final Stream<FileReader> fileReaders = fileReaderSupplier.get();
 
             // TODO: sleep if no files in directory
 
@@ -100,12 +101,12 @@ class ConnectDirectoryReader extends ConnectReader {
         return -1L;
     }
 
-    String getCanonicalDirname() {
+    public String getCanonicalDirname() {
         return canonicalDirname;
     }
 
     @Override
-    void close() {
+    public void close() {
         log.info("Interrupting reader");
         breakAndClose.set(true);
         log.info("Closed");
