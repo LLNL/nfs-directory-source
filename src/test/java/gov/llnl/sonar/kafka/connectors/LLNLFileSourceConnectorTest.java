@@ -2,7 +2,6 @@ package gov.llnl.sonar.kafka.connectors;
 
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.connector.ConnectorContext;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.easymock.EasyMock;
 import org.easymock.EasyMockSupport;
 import org.junit.Before;

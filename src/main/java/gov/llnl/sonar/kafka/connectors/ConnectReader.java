@@ -7,8 +7,6 @@ import java.util.List;
 
 abstract class ConnectReader {
 
-    private Long batchSize;
-
     abstract Long read(List<SourceRecord> records, SourceTaskContext context);
     abstract void close();
 

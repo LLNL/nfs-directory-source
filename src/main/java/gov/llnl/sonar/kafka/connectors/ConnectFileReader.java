@@ -1,13 +1,11 @@
 package gov.llnl.sonar.kafka.connectors;
 
 import io.confluent.connect.avro.AvroData;
-
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.JsonDecoder;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.kafka.connect.source.SourceRecord;
-
 import org.apache.kafka.connect.source.SourceTaskContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
