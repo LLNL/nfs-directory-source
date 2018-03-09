@@ -55,6 +55,8 @@ class ConnectFileReader extends ConnectReader {
             if (breakAndClose.get())
                 break;
 
+            // TODO: filestream may be closed here, fix!
+
             try {
                 Object parsedValue = avroStreamParser.read();
 
@@ -67,10 +69,10 @@ class ConnectFileReader extends ConnectReader {
                 try {
                     log.info(TAG + "Purging ingested file {}", canonicalFilename);
                     Files.delete(canonicalPath);
+                    close();
                 } catch (IOException e1) {
                     log.error(TAG + "Error deleting file {}", canonicalFilename);
                 }
-                break;
             }
 
         }

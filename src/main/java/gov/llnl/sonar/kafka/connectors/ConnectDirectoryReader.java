@@ -53,8 +53,8 @@ class ConnectDirectoryReader extends ConnectReader {
             Stream<ConnectFileReader> fileReaderStream = null;
             try {
                  fileReaderStream = Files.walk(dirPath)
-                         .limit(filesPerBatch)
                          .filter(Files::isRegularFile)
+                         .limit(filesPerBatch)
                          .map((Path p) -> new ConnectFileReader(
                                  uncheckedGetCanonicalPath(p),
                                  topic,
@@ -84,6 +84,7 @@ class ConnectDirectoryReader extends ConnectReader {
                 log.info(TAG + "Ingesting file {}", reader.getCanonicalFilename());
                 Long numRecordsFile = reader.read(records, context);
                 log.info(TAG + "Read {} records from file {}", numRecordsFile, reader.getCanonicalFilename());
+                reader.close();
 
                 return numRecordsFile;
             }).mapToLong(l -> l).sum();
