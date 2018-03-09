@@ -2,18 +2,13 @@ package gov.llnl.sonar.kafka.connectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class LLNLDirectorySourceTask extends SourceTask {
-    private static final Class myClass = LLNLDirectorySourceTask.class;
-    private static final Logger log = LoggerFactory.getLogger(myClass);
-    private final String TAG = myClass.getName() + ": ";
+public class LLNLDirectorySourceTask extends SourceTask implements Loggable {
 
     private static final String PARTITION_FIELD = "filename";
     private static final String OFFSET_FIELD = "position";

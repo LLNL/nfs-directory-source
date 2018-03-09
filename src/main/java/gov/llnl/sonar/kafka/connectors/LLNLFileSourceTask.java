@@ -13,13 +13,9 @@ import java.util.Map;
 // TODO: handle file not found
 // TODO: multiple tasks, thread safety
 
-public class LLNLFileSourceTask extends SourceTask {
-    private static final Class myClass = LLNLFileSourceTask.class;
-    private static final Logger log = LoggerFactory.getLogger(myClass);
-    private final String TAG = myClass.getName() + ": ";
-
-    public static final String PARTITION_FIELD = "filename";
-    public static final String OFFSET_FIELD = "position";
+public class LLNLFileSourceTask extends SourceTask implements Loggable {
+    private static final String PARTITION_FIELD = "filename";
+    private static final String OFFSET_FIELD = "position";
 
     private ConnectFileReader reader;
 

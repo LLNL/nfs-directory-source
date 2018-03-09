@@ -16,18 +16,12 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 class ConnectDirectoryReader extends ConnectReader {
-    private static final Class myClass = ConnectDirectoryReader.class;
-    private static final Logger log = LoggerFactory.getLogger(myClass);
-    private final String TAG = myClass.getName() + ": ";
-
     private String canonicalDirname;
     private Path dirPath;
 
     private Long filesPerBatch = 10L;
 
     private Supplier<Stream<ConnectFileReader>> fileReaderSupplier;
-
-    private AtomicBoolean breakAndClose = new AtomicBoolean(false);
 
     private String uncheckedGetCanonicalPath(Path path) {
         try {

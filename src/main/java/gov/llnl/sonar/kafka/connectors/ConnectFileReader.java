@@ -1,14 +1,7 @@
 package gov.llnl.sonar.kafka.connectors;
 
-import io.confluent.connect.avro.AvroData;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.io.DecoderFactory;
-import org.apache.avro.io.JsonDecoder;
-import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -16,30 +9,18 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 class ConnectFileReader extends ConnectReader {
-    private static final Class myClass = ConnectFileReader.class;
-    private static final Logger log = LoggerFactory.getLogger(myClass);
-    private final String TAG = myClass.getName() + ": ";
-
     private String canonicalFilename;
     private Path canonicalPath;
     private String topic;
 
-    private org.apache.kafka.connect.data.Schema connectSchema;
     private Long batchSize;
     private String partitionField;
     private String offsetField;
 
-    private InputStream fileStream;
-    private JsonDecoder avroJsonDecoder;
-    private SpecificDatumReader<GenericData.Record> avroDatumReader;
-    private GenericData.Record datum;
-
-    private final AvroData schemaConverter;
-
-    private AtomicBoolean breakAndClose = new AtomicBoolean(false);
+    private FileInputStream fileStream;
+    private AvroFileStreamParser avroStreamParser;
 
     ConnectFileReader(String filename,
                       String topic,
@@ -47,8 +28,6 @@ class ConnectFileReader extends ConnectReader {
                       Long batchSize,
                       String partitionField,
                       String offsetField) {
-
-        this.schemaConverter = new AvroData(2);
 
         this.topic = topic;
         this.batchSize = batchSize;
@@ -60,11 +39,9 @@ class ConnectFileReader extends ConnectReader {
             this.canonicalPath = file.toPath().toRealPath();
             this.canonicalFilename = file.getCanonicalPath();
 
-            fileStream = new FileInputStream(file);
-            connectSchema = schemaConverter.toConnectSchema(avroSchema);
+            this.fileStream = new FileInputStream(file);
+            this.avroStreamParser = new AvroFileStreamParser(fileStream, avroSchema);
 
-            avroJsonDecoder = DecoderFactory.get().jsonDecoder(avroSchema, fileStream);
-            avroDatumReader = new SpecificDatumReader<>(avroSchema);
         } catch (Exception ex) {
             log.error(TAG, ex);
         }
@@ -79,7 +56,13 @@ class ConnectFileReader extends ConnectReader {
                 break;
 
             try {
-                datum = avroDatumReader.read(datum, avroJsonDecoder);
+                Object parsedValue = avroStreamParser.read();
+
+                Map sourcePartition = Collections.singletonMap(partitionField, canonicalFilename);
+                Map sourceOffset = Collections.singletonMap(offsetField, offset);
+
+                records.add(new SourceRecord(sourcePartition, sourceOffset, topic, avroStreamParser.connectSchema, parsedValue));
+                offset++;
             } catch (EOFException e) {
                 try {
                     log.info(TAG + "Purging ingested file {}", canonicalFilename);
@@ -88,29 +71,19 @@ class ConnectFileReader extends ConnectReader {
                     log.error(TAG + "Error deleting file {}", canonicalFilename);
                 }
                 break;
-            } catch (IOException e) {
-                log.error(TAG + "Error parsing file {} at row {}: ", canonicalFilename, avroDatumReader.getData().toString());
-                continue;
             }
 
-            Map sourcePartition = Collections.singletonMap(partitionField, canonicalFilename);
-            Map sourceOffset = Collections.singletonMap(offsetField, offset);
-
-            Object connectValue = schemaConverter.toConnectData(connectSchema, datum);
-
-            records.add(new SourceRecord(sourcePartition, sourceOffset, topic, connectSchema, connectValue));
-            offset++;
         }
         return i;
     }
 
-    public String getCanonicalFilename() {
+    String getCanonicalFilename() {
         return canonicalFilename;
     }
 
     void close() {
+        super.close();
         try {
-            breakAndClose.set(true);
             fileStream.close();
         } catch (Exception ex) {
             log.error(TAG, ex);

@@ -13,8 +13,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class LLNLDirectorySourceConnector extends SourceConnector {
-    private static Logger log = LoggerFactory.getLogger(LLNLDirectorySourceConnector.class);
+public class LLNLDirectorySourceConnector extends SourceConnector implements Loggable {
 
     private LLNLDirectorySourceConfig config;
 
