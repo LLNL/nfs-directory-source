@@ -76,6 +76,8 @@ class ConnectDirectoryReader extends ConnectReader {
 
             final Stream<ConnectFileReader> fileReaders = fileReaderSupplier.get();
 
+            // TODO: sleep if no files in directory
+
             return fileReaders.map(reader -> {
 
                 if (breakAndClose.get())

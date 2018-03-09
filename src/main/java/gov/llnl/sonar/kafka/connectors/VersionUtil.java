@@ -1,6 +1,5 @@
 package gov.llnl.sonar.kafka.connectors;
 
-
 class VersionUtil {
     public static String getVersion() {
         try {
