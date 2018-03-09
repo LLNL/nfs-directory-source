@@ -12,9 +12,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class LLNLDirectorySourceConnector extends SourceConnector {
+public class DirectorySourceConnector extends SourceConnector {
 
-    private LLNLDirectorySourceConfig config;
+    private DirectorySourceConfig config;
 
     @Override
     public String version() {
@@ -23,12 +23,12 @@ public class LLNLDirectorySourceConnector extends SourceConnector {
 
     @Override
     public void start(Map<String, String> props) {
-        config = new LLNLDirectorySourceConfig(props);
+        config = new DirectorySourceConfig(props);
     }
 
     @Override
     public Class<? extends Task> taskClass() {
-        return LLNLDirectorySourceTask.class;
+        return DirectorySourceTask.class;
     }
 
     @Override
@@ -41,7 +41,7 @@ public class LLNLDirectorySourceConnector extends SourceConnector {
 
     @Override
     public ConfigDef config() {
-        return LLNLDirectorySourceConfig.conf();
+        return DirectorySourceConfig.conf();
     }
 
     @Override

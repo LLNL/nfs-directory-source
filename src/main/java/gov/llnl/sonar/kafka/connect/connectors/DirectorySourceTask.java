@@ -1,6 +1,6 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
-import gov.llnl.sonar.kafka.connect.readers.FileReader;
+import gov.llnl.sonar.kafka.connect.readers.DirectoryReader;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -11,15 +11,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-// TODO: handle file not found
-// TODO: multiple tasks, thread safety
-
 @Slf4j
-public class LLNLFileSourceTask extends SourceTask {
+public class DirectorySourceTask extends SourceTask {
+
     private static final String PARTITION_FIELD = "filename";
     private static final String OFFSET_FIELD = "position";
 
-    private FileReader reader;
+    private DirectoryReader reader;
 
     @Override
     public String version() {
@@ -28,10 +26,9 @@ public class LLNLFileSourceTask extends SourceTask {
 
     @Override
     public void start(Map<String, String> map) {
-        LLNLFileSourceConfig config = new LLNLFileSourceConfig(map);
+        DirectorySourceConfig config = new DirectorySourceConfig(map);
         try {
-
-            String relativeFilename = config.getFilename();
+            String relativeDirname = config.getDirname();
 
             org.apache.avro.Schema avroSchema;
             if (!config.getAvroSchema().isEmpty()) {
@@ -40,13 +37,14 @@ public class LLNLFileSourceTask extends SourceTask {
                 avroSchema = new org.apache.avro.Schema.Parser().parse(new File(config.getAvroSchemaFilename()));
             }
 
-            reader = new FileReader(
-                    relativeFilename,
-                    config.getTopic(),
-                    avroSchema,
-                    config.getBatchSize(),
-                    PARTITION_FIELD,
-                    OFFSET_FIELD);
+            reader = new DirectoryReader(relativeDirname,
+                                                config.getTopic(),
+                                                avroSchema,
+                                                config.getBatchSize(),
+                                                PARTITION_FIELD,
+                                                OFFSET_FIELD);
+
+            log.info("Added directory {}", reader.getCanonicalDirname());
 
         } catch (Exception ex) {
             log.error(ex.getMessage());
@@ -59,17 +57,13 @@ public class LLNLFileSourceTask extends SourceTask {
         ArrayList<SourceRecord> records = new ArrayList<>();
 
         try {
-
-            reader.read(records, context);
-
-            if (records.isEmpty())
-                return null;
-
+            Long numRecordsRead = reader.read(records, context);
+            log.info("Read {} records from directory {}", numRecordsRead, reader.getCanonicalDirname());
             return records;
-
         } catch (Exception ex) {
             log.error(ex.getMessage());
         }
+
         return null;
     }
 
@@ -83,3 +77,4 @@ public class LLNLFileSourceTask extends SourceTask {
         }
     }
 }
+

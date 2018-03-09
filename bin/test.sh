@@ -20,7 +20,7 @@ function init () {
     echo "Starting kafka connect (and dependencies)..."
     confluent start connect
 
-    echo -n "Testing whether LLNLFileSourceConnector is available..."
+    echo -n "Testing whether FileSourceConnector is available..."
     confluent list plugins | grep LLNLFileSourceConnector > /dev/null 2>&1
     if [ "$?" -eq 0 ]
     then

@@ -8,12 +8,12 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import java.util.Map;
 
 
-public class LLNLFileSourceConfig extends AbstractConfig {
+public class FileSourceConfig extends AbstractConfig {
 
-    public LLNLFileSourceConfig(ConfigDef config, Map<String, String> parsedConfig) {
+    public FileSourceConfig(ConfigDef config, Map<String, String> parsedConfig) {
         super(config, parsedConfig);
     }
-    public LLNLFileSourceConfig(Map<String, String> parsedConfig) {
+    public FileSourceConfig(Map<String, String> parsedConfig) {
         this(conf(), parsedConfig);
     }
 

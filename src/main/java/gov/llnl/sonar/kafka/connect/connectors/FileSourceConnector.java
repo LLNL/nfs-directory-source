@@ -12,9 +12,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class LLNLFileSourceConnector extends SourceConnector {
+public class FileSourceConnector extends SourceConnector {
 
-    private LLNLFileSourceConfig config;
+    private FileSourceConfig config;
 
     @Override
     public String version() {
@@ -23,12 +23,12 @@ public class LLNLFileSourceConnector extends SourceConnector {
 
     @Override
     public void start(Map<String, String> props) {
-        config = new LLNLFileSourceConfig(props);
+        config = new FileSourceConfig(props);
     }
 
     @Override
     public Class<? extends Task> taskClass() {
-        return LLNLFileSourceTask.class;
+        return FileSourceTask.class;
     }
 
     @Override
@@ -41,7 +41,7 @@ public class LLNLFileSourceConnector extends SourceConnector {
 
     @Override
     public ConfigDef config() {
-        return LLNLFileSourceConfig.conf();
+        return FileSourceConfig.conf();
     }
 
     @Override

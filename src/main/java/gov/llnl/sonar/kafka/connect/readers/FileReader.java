@@ -1,7 +1,7 @@
 package gov.llnl.sonar.kafka.connect.readers;
 
 import gov.llnl.sonar.kafka.connect.parsers.AvroFileStreamParser;
-import gov.llnl.sonar.kafka.connect.util.ConnectUtils;
+import gov.llnl.sonar.kafka.connect.util.ConnectUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
@@ -53,7 +53,7 @@ public class FileReader extends AbstractReader {
 
     @Override
     public Long read(List<SourceRecord> records, SourceTaskContext context) {
-        Long i, offset = ConnectUtils.getStreamOffset(context, partitionField, offsetField, canonicalFilename);
+        Long i, offset = ConnectUtil.getStreamOffset(context, partitionField, offsetField, canonicalFilename);
         for (i = 0L; i < batchSize; i++) {
 
             if (breakAndClose.get())

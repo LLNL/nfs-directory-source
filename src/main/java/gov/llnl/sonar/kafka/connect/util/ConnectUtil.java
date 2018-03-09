@@ -5,7 +5,7 @@ import org.apache.kafka.connect.source.SourceTaskContext;
 import java.util.Collections;
 import java.util.Map;
 
-public class ConnectUtils {
+public class ConnectUtil {
     public static Long getStreamOffset(SourceTaskContext context,
                                 String PARTITION_FIELD,
                                 String OFFSET_FIELD,

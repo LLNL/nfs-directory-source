@@ -7,12 +7,12 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 
 import java.util.Map;
 
-public class LLNLDirectorySourceConfig extends AbstractConfig {
+public class DirectorySourceConfig extends AbstractConfig {
 
-    public LLNLDirectorySourceConfig(ConfigDef config, Map<String, String> parsedConfig) {
+    public DirectorySourceConfig(ConfigDef config, Map<String, String> parsedConfig) {
         super(config, parsedConfig);
     }
-    public LLNLDirectorySourceConfig(Map<String, String> parsedConfig) {
+    public DirectorySourceConfig(Map<String, String> parsedConfig) {
         this(conf(), parsedConfig);
     }
 
