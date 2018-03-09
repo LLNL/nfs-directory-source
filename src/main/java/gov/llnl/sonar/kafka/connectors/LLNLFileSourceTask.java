@@ -77,7 +77,7 @@ public class LLNLFileSourceTask extends SourceTask {
 
     @Override
     public void stop() {
-        log.info(TAG + "stop");
+        log.info(TAG + "Task stopping");
         try {
             reader.close();
         } catch (Exception ex) {
