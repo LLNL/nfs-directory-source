@@ -6,7 +6,7 @@ import org.apache.kafka.connect.source.SourceTaskContext;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-abstract class ConnectReader implements Loggable {
+abstract class ConnectReader {
 
     AtomicBoolean breakAndClose = new AtomicBoolean(false);
 

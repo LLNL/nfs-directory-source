@@ -1,5 +1,6 @@
 package gov.llnl.sonar.kafka.connectors;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
 
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+@Slf4j
 class ConnectDirectoryReader extends ConnectReader {
     private String canonicalDirname;
     private Path dirPath;
@@ -47,7 +49,7 @@ class ConnectDirectoryReader extends ConnectReader {
             throw new IOException(canonicalDirname + " is not a directory!");
         }
 
-        log.info(TAG + "Adding all files in {}", canonicalDirname);
+        log.info("Adding all files in {}", canonicalDirname);
 
         fileReaderSupplier = () -> {
             Stream<ConnectFileReader> fileReaderStream = null;
@@ -83,16 +85,16 @@ class ConnectDirectoryReader extends ConnectReader {
                 if (breakAndClose.get())
                     throw new BreakException();
 
-                log.info(TAG + "Ingesting file {}", reader.getCanonicalFilename());
+                log.info("Ingesting file {}", reader.getCanonicalFilename());
                 Long numRecordsFile = reader.read(records, context);
-                log.info(TAG + "Read {} records from file {}", numRecordsFile, reader.getCanonicalFilename());
+                log.info("Read {} records from file {}", numRecordsFile, reader.getCanonicalFilename());
                 reader.close();
 
                 return numRecordsFile;
             }).mapToLong(l -> l).sum();
 
         } catch (BreakException b) {
-            log.info(TAG + "Read interrupted, closing reader");
+            log.info("Read interrupted, closing reader");
         }
 
         return -1L;
@@ -104,9 +106,9 @@ class ConnectDirectoryReader extends ConnectReader {
 
     @Override
     void close() {
-        log.info(TAG + "Interrupting reader");
+        log.info("Interrupting reader");
         breakAndClose.set(true);
-        log.info(TAG + "Closed");
+        log.info("Closed");
     }
 
 }

@@ -1,31 +1,36 @@
 package gov.llnl.sonar.kafka.connectors;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
 
-import java.io.EOFException;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 
-public class AvroFileStreamParser extends ConnectFileStreamParser {
+@Slf4j
+public class AvroConnectFileStreamParser extends ConnectFileStreamParser {
+
+    private FileInputStream fileStream;
 
     private Decoder decoder;
     private SpecificDatumReader<GenericData.Record> datumReader;
     private GenericData.Record datum;
 
-    AvroFileStreamParser(FileInputStream in,
-                         Schema avroSchema) {
+    AvroConnectFileStreamParser(String filename,
+                                Schema avroSchema) {
 
         super(avroSchema);
 
         try {
-            decoder = DecoderFactory.get().jsonDecoder(avroSchema, in);
+            this.fileStream = new FileInputStream(new File(filename));
+            decoder = DecoderFactory.get().jsonDecoder(avroSchema, fileStream);
             datumReader = new SpecificDatumReader<>(avroSchema);
+        } catch (FileNotFoundException ex) {
+            log.error("File {} not found", filename, ex);
         } catch (Exception ex) {
-            log.error(TAG, ex);
+            log.error(ex.getMessage());
         }
     }
 
@@ -37,10 +42,15 @@ public class AvroFileStreamParser extends ConnectFileStreamParser {
         } catch (EOFException e) {
             throw e;
         } catch (IOException e) {
-            log.error(TAG + "Error parsing value {}: ", datumReader.getData().toString());
+            log.error("Error parsing value {}: ", datumReader.getData().toString());
         }
 
         return avroConnectConverter.toConnectData(connectSchema, datum);
 
+    }
+
+    @Override
+    public void close() throws IOException {
+        fileStream.close();
     }
 }

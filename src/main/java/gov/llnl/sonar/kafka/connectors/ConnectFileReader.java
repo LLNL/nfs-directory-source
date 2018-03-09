@@ -1,5 +1,6 @@
 package gov.llnl.sonar.kafka.connectors;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
 
@@ -10,6 +11,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 class ConnectFileReader extends ConnectReader {
     private String canonicalFilename;
     private Path canonicalPath;
@@ -19,8 +21,7 @@ class ConnectFileReader extends ConnectReader {
     private String partitionField;
     private String offsetField;
 
-    private FileInputStream fileStream;
-    private AvroFileStreamParser avroStreamParser;
+    private AvroConnectFileStreamParser avroStreamParser;
 
     ConnectFileReader(String filename,
                       String topic,
@@ -39,11 +40,10 @@ class ConnectFileReader extends ConnectReader {
             this.canonicalPath = file.toPath().toRealPath();
             this.canonicalFilename = file.getCanonicalPath();
 
-            this.fileStream = new FileInputStream(file);
-            this.avroStreamParser = new AvroFileStreamParser(fileStream, avroSchema);
+            this.avroStreamParser = new AvroConnectFileStreamParser(canonicalFilename, avroSchema);
 
         } catch (Exception ex) {
-            log.error(TAG, ex);
+            log.error(ex.getMessage());
         }
     }
 
@@ -67,11 +67,11 @@ class ConnectFileReader extends ConnectReader {
                 offset++;
             } catch (EOFException e) {
                 try {
-                    log.info(TAG + "Purging ingested file {}", canonicalFilename);
+                    log.info("Purging ingested file {}", canonicalFilename);
                     Files.delete(canonicalPath);
                     close();
                 } catch (IOException e1) {
-                    log.error(TAG + "Error deleting file {}", canonicalFilename);
+                    log.error("Error deleting file {}", canonicalFilename);
                 }
             }
 
@@ -86,9 +86,9 @@ class ConnectFileReader extends ConnectReader {
     void close() {
         super.close();
         try {
-            fileStream.close();
+            avroStreamParser.close();
         } catch (Exception ex) {
-            log.error(TAG, ex);
+            log.error(ex.getMessage());
         }
     }
 }

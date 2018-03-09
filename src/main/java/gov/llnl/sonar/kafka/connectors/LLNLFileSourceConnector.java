@@ -13,7 +13,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class LLNLFileSourceConnector extends SourceConnector implements Loggable {
+public class LLNLFileSourceConnector extends SourceConnector {
 
     private LLNLFileSourceConfig config;
 
