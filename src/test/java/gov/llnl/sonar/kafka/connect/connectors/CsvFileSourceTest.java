@@ -1,6 +1,7 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
 import lombok.extern.log4j.Log4j;
+import org.apache.commons.io.FilenameUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -17,20 +18,10 @@ import static gov.llnl.sonar.kafka.connect.connectors.TestData.*;
 public class CsvFileSourceTest extends ConnectTest {
 
     private File csvTestFile;
-    private static final String csvTestSourceConnector = "test-file-source-csv";
-    private static final String csvTestSourceTopic = "test-file-source-csv-topic";
+    private String csvTestSourceConnector;
+    private String csvTestSourceTopic;
 
     private Map<String, String> configProperties = new HashMap<>();
-
-    @Override
-    List<String> topics() {
-        return Arrays.asList(csvTestSourceTopic);
-    }
-
-    @Override
-    List<String> connectors() {
-        return Arrays.asList(csvTestSourceConnector);
-    }
 
     @Before
     public void setup() {
@@ -39,7 +30,7 @@ public class CsvFileSourceTest extends ConnectTest {
 
         try {
             log.info("Creating test CSV file");
-            csvTestFile = File.createTempFile("file-source-test", ".csv");
+            csvTestFile = File.createTempFile("csv-test-file-source-", ".csv");
 
             log.info("Writing CSV entries to file source");
             BufferedWriter bw = new BufferedWriter(new FileWriter(csvTestFile));
@@ -57,7 +48,12 @@ public class CsvFileSourceTest extends ConnectTest {
             log.error(ex);
         }
 
-        configProperties.put(FileSourceConfig.FILENAME, csvTestFile.getAbsolutePath());
+        String csvTestFilename = csvTestFile.getAbsolutePath();
+        String csvTestFileBasename = FilenameUtils.getBaseName(csvTestFilename);
+        csvTestSourceConnector = csvTestFileBasename;
+        csvTestSourceTopic = csvTestFileBasename + "-topic";
+
+        configProperties.put(FileSourceConfig.FILENAME, csvTestFilename);
         configProperties.put(FileSourceConfig.FORMAT, "csv");
         configProperties.put(FileSourceConfig.FORMAT_OPTIONS, "");
         configProperties.put(FileSourceConfig.TOPIC, csvTestSourceTopic);
@@ -76,8 +72,10 @@ public class CsvFileSourceTest extends ConnectTest {
 
     @After
     public void teardown() {
-        super.teardown();
+        confluent.deleteConnector(csvTestSourceConnector);
+        confluent.deleteTopic(csvTestSourceTopic);
         csvTestFile.delete();
+        super.teardown();
     }
 
 }

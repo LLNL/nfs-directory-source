@@ -1,6 +1,7 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
 import lombok.extern.log4j.Log4j;
+import org.apache.commons.io.FilenameUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,18 +20,8 @@ public class JsonFileSourceTest extends ConnectTest {
     Map<String, String> configProperties = new HashMap<>();
 
     private File jsonTestFile;
-    private static final String jsonTestSourceConnector = "test-file-source-json";
-    private static final String jsonTestSourceTopic = "test-file-source-json-topic";
-
-    @Override
-    List<String> topics() {
-        return Arrays.asList(jsonTestSourceTopic);
-    }
-
-    @Override
-    List<String> connectors() {
-        return Arrays.asList(jsonTestSourceConnector);
-    }
+    private String jsonTestSourceConnector;
+    private String jsonTestSourceTopic;
 
     @Before
     public void setup() {
@@ -38,7 +29,7 @@ public class JsonFileSourceTest extends ConnectTest {
 
         try {
             log.info("Creating test JSON file");
-            jsonTestFile = File.createTempFile("file-source-test", ".json");
+            jsonTestFile = File.createTempFile("json-test-file-source-", ".json");
 
             log.info("Writing JSON entries to file source");
             BufferedWriter bw = new BufferedWriter(new FileWriter(jsonTestFile));
@@ -50,7 +41,12 @@ public class JsonFileSourceTest extends ConnectTest {
             log.error(ex);
         }
 
-        configProperties.put(FileSourceConfig.FILENAME, jsonTestFile.getAbsolutePath());
+        String jsonTestFilename = jsonTestFile.getAbsolutePath();
+        String jsonTestFileBasename = FilenameUtils.getBaseName(jsonTestFilename);
+        jsonTestSourceConnector = jsonTestFileBasename;
+        jsonTestSourceTopic = jsonTestFileBasename + "-topic";
+
+        configProperties.put(FileSourceConfig.FILENAME, jsonTestFilename);
         configProperties.put(FileSourceConfig.FORMAT, "json");
         configProperties.put(FileSourceConfig.FORMAT_OPTIONS, "");
         configProperties.put(FileSourceConfig.TOPIC, jsonTestSourceTopic);
@@ -69,8 +65,10 @@ public class JsonFileSourceTest extends ConnectTest {
 
     @After
     public void teardown() {
-        super.teardown();
+        confluent.deleteConnector(jsonTestSourceConnector);
+        confluent.deleteTopic(jsonTestSourceTopic);
         jsonTestFile.delete();
+        super.teardown();
     }
 
 }
