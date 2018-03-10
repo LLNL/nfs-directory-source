@@ -16,19 +16,19 @@ public class DirectorySourceConfig extends AbstractConfig {
         this(conf(), parsedConfig);
     }
 
-    private static final String DIRNAME = "dirname";
-    private static final String DIRNAME_DOC = "The name of the directory to read from.";
-    private static final String TOPIC = "topic";
-    private static final String TOPIC_DOC = "The name of the topic to stream to.";
-    private static final String FORMAT = "format";
-    private static final String FORMAT_DOC = "Format of the file [ csv | json ]";
-    private static final String FORMAT_OPTIONS = "format.options";
-    private static final String FORMAT_OPTIONS_DOC = "Comma-separated list of formatting options as option:value.\n" +
+    public static final String DIRNAME = "dirname";
+    public static final String DIRNAME_DOC = "The name of the directory to read from.";
+    public static final String TOPIC = "topic";
+    public static final String TOPIC_DOC = "The name of the topic to stream to.";
+    public static final String FORMAT = "format";
+    public static final String FORMAT_DOC = "Format of the file [ csv | json ]";
+    public static final String FORMAT_OPTIONS = "format.options";
+    public static final String FORMAT_OPTIONS_DOC = "Comma-separated list of formatting options as option:value.\n" +
             "Available options:\n" +
             "   csv: header:[true|false],delim:<char>,quote=<char>\n" +
             "   json: orient:[records]" ;
-    private static final String AVRO_SCHEMA = "avro.schema";
-    private static final String AVRO_SCHEMA_DOC = "Avro schema string, e.g., " +
+    public static final String AVRO_SCHEMA = "avro.schema";
+    public static final String AVRO_SCHEMA_DOC = "Avro schema string, e.g., " +
             "{\n" +
             "  \"type\": \"record\",\n" +
             "  \"name\": \"idstr\",\n" +
@@ -37,10 +37,10 @@ public class DirectorySourceConfig extends AbstractConfig {
             "    {\"name\": \"str\", \"type\": \"string\"},\n" +
             "  ]\n" +
             "}";
-    private static final String AVRO_SCHEMA_FILENAME = "avro.schema.filename";
-    private static final String AVRO_SCHEMA_FILENAME_DOC = "Avro schema filename.";
-    private static final String BATCH_SIZE = "batch.size";
-    private static final String BATCH_SIZE_DOC = "Number of lines to read/ingest at a time from the file.";
+    public static final String AVRO_SCHEMA_FILENAME = "avro.schema.filename";
+    public static final String AVRO_SCHEMA_FILENAME_DOC = "Avro schema filename.";
+    public static final String BATCH_SIZE = "batch.size";
+    public static final String BATCH_SIZE_DOC = "Number of lines to read/ingest at a time from the file.";
 
     public static ConfigDef conf() {
         return new ConfigDef()

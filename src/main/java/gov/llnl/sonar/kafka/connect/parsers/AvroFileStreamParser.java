@@ -30,7 +30,7 @@ public class AvroFileStreamParser extends FileStreamParser {
         } catch (FileNotFoundException ex) {
             log.error("File {} not found", filename, ex);
         } catch (Exception ex) {
-            log.error(ex.getMessage());
+            log.error("Exception:", ex);
         }
     }
 

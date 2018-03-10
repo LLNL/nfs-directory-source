@@ -36,7 +36,7 @@ public class CsvFileStreamParser extends FileStreamParser {
         } catch (FileNotFoundException ex) {
             log.error("File {} not found", filename, ex);
         } catch (IOException ex) {
-            log.error(ex.getMessage());
+            log.error("Exception:", ex);
         }
 
     }
@@ -56,7 +56,7 @@ public class CsvFileStreamParser extends FileStreamParser {
                 return csvRecordConverter.convert(csvRecord);
 
             } catch (DataException ex) {
-                log.error("Failed to parse file {}, row {}: {}", filename, csvRecord.toString(), ex.getMessage());
+                log.error("Failed to parse file {}, row {}", filename, csvRecord.toString(), ex);
             }
         } else {
             throw new EOFException();

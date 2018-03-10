@@ -49,7 +49,7 @@ public class DirectorySourceTask extends SourceTask {
             log.info("Added directory {}", reader.getCanonicalDirname());
 
         } catch (Exception ex) {
-            log.error(ex.getMessage());
+            log.error("Exception:", ex);
         }
     }
 
@@ -63,7 +63,7 @@ public class DirectorySourceTask extends SourceTask {
             log.info("Read {} records from directory {}", numRecordsRead, reader.getCanonicalDirname());
             return records;
         } catch (Exception ex) {
-            log.error(ex.getMessage());
+            log.error("Exception:", ex);
         }
 
         return null;
@@ -75,7 +75,7 @@ public class DirectorySourceTask extends SourceTask {
         try {
             reader.close();
         } catch (Exception ex) {
-            log.error(ex.getMessage());
+            log.error("Exception:", ex);
         }
     }
 }

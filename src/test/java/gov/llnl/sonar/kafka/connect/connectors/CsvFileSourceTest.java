@@ -7,9 +7,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.*;
@@ -17,7 +18,7 @@ import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.*;
 @Log4j
 public class CsvFileSourceTest extends ConnectTest {
 
-    private File csvTestFile;
+    private Path csvTestFile;
     private String csvTestSourceConnector;
     private String csvTestSourceTopic;
 
@@ -30,25 +31,25 @@ public class CsvFileSourceTest extends ConnectTest {
 
         try {
             log.info("Creating test CSV file");
-            csvTestFile = File.createTempFile("csv-test-file-source-", ".csv");
+            csvTestFile = Files.createTempFile("csv-test-file-source-", ".csv");
 
             log.info("Writing CSV entries to file source");
-            BufferedWriter bw = new BufferedWriter(new FileWriter(csvTestFile));
-            List<String> inputRecords = Arrays.asList(
-                    "\"id\",\"str\"",
-                    "\"1\",\"one\"",
-                    "\"2\",\"two\""
-            );
-            for (String r : inputRecords) {
-                bw.write(r + "\n");
-            }
+            BufferedWriter bw = new BufferedWriter(new FileWriter(csvTestFile.toFile()));
+            bw.write("\"id\",\"str\""); // header
+            bw.write("\"1\",\"one\"");
+            bw.write("\"2\",\"two\"");
+            bw.write("\"3\",\"three\"");
+            bw.write("\"4\",\"four\"");
+            bw.write("\"5\",\"five\"");
+            bw.write("\"6\",\"six\"");
+            bw.write("\"7\",\"seven\"");
+            bw.write("\"8\",\"eight\"");
             bw.flush();
-
         } catch (IOException ex) {
             log.error(ex);
         }
 
-        String csvTestFilename = csvTestFile.getAbsolutePath();
+        String csvTestFilename = csvTestFile.toString();
         String csvTestFileBasename = FilenameUtils.getBaseName(csvTestFilename);
         csvTestSourceConnector = csvTestFileBasename;
         csvTestSourceTopic = csvTestFileBasename + "-topic";
@@ -74,7 +75,7 @@ public class CsvFileSourceTest extends ConnectTest {
     public void teardown() {
         confluent.deleteConnector(csvTestSourceConnector);
         confluent.deleteTopic(csvTestSourceTopic);
-        csvTestFile.delete();
+        csvTestFile.toFile().delete();
         super.teardown();
     }
 

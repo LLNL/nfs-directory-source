@@ -50,7 +50,7 @@ public class FileSourceTask extends SourceTask {
                     config.getFormat());
 
         } catch (Exception ex) {
-            log.error(ex.getMessage());
+            log.error("Exception:", ex);
         }
     }
 
@@ -69,7 +69,7 @@ public class FileSourceTask extends SourceTask {
             return records;
 
         } catch (Exception ex) {
-            log.error("Exception: ", ex);
+            log.error("Exception:", ex);
         }
         return null;
     }
@@ -80,7 +80,7 @@ public class FileSourceTask extends SourceTask {
         try {
             reader.close();
         } catch (Exception ex) {
-            log.error(ex.getMessage());
+            log.error("Exception:", ex);
         }
     }
 }

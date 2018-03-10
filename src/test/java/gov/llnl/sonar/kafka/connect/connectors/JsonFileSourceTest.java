@@ -10,6 +10,8 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.*;
@@ -19,7 +21,7 @@ public class JsonFileSourceTest extends ConnectTest {
 
     Map<String, String> configProperties = new HashMap<>();
 
-    private File jsonTestFile;
+    private Path jsonTestFile;
     private String jsonTestSourceConnector;
     private String jsonTestSourceTopic;
 
@@ -29,18 +31,24 @@ public class JsonFileSourceTest extends ConnectTest {
 
         try {
             log.info("Creating test JSON file");
-            jsonTestFile = File.createTempFile("json-test-file-source-", ".json");
+            jsonTestFile = Files.createTempFile("json-test-file-source-", ".json");
 
             log.info("Writing JSON entries to file source");
-            BufferedWriter bw = new BufferedWriter(new FileWriter(jsonTestFile));
+            BufferedWriter bw = new BufferedWriter(new FileWriter(jsonTestFile.toFile()));
             bw.write("{\"id\": 1, \"str\": \"one\"}\n");
             bw.write("{\"id\": 2, \"str\": \"two\"}\n");
+            bw.write("{\"id\": 3, \"str\": \"three\"}\n");
+            bw.write("{\"id\": 4, \"str\": \"four\"}\n");
+            bw.write("{\"id\": 5, \"str\": \"five\"}\n");
+            bw.write("{\"id\": 6, \"str\": \"six\"}\n");
+            bw.write("{\"id\": 7, \"str\": \"seven\"}\n");
+            bw.write("{\"id\": 8, \"str\": \"eight\"}\n");
             bw.flush();
         } catch (IOException ex) {
             log.error(ex);
         }
 
-        String jsonTestFilename = jsonTestFile.getAbsolutePath();
+        String jsonTestFilename = jsonTestFile.toString();
         String jsonTestFileBasename = FilenameUtils.getBaseName(jsonTestFilename);
         jsonTestSourceConnector = jsonTestFileBasename;
         jsonTestSourceTopic = jsonTestFileBasename + "-topic";
@@ -66,7 +74,7 @@ public class JsonFileSourceTest extends ConnectTest {
     public void teardown() {
         confluent.deleteConnector(jsonTestSourceConnector);
         confluent.deleteTopic(jsonTestSourceTopic);
-        jsonTestFile.delete();
+        jsonTestFile.toFile().delete();
         super.teardown();
     }
 

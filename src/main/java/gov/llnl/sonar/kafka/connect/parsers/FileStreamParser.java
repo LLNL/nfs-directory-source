@@ -24,7 +24,7 @@ public abstract class FileStreamParser {
         try {
             connectSchema = avroConnectConverter.toConnectSchema(avroSchema);
         } catch (Exception ex) {
-            log.error(ex.getMessage());
+            log.error("Exception:", ex);
         }
     }
 

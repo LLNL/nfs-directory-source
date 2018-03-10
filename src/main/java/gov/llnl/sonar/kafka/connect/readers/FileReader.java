@@ -121,7 +121,7 @@ public class FileReader extends Reader {
         try {
             streamParser.close();
         } catch (Exception ex) {
-            log.error(ex.getMessage());
+            log.error("Exception:", ex);
         }
     }
 }
