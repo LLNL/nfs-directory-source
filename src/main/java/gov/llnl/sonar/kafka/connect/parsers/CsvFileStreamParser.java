@@ -56,7 +56,7 @@ public class CsvFileStreamParser extends FileStreamParser {
                 return csvRecordConverter.convert(csvRecord);
 
             } catch (DataException ex) {
-                log.error("Failed to parse file {}, row {}", filename, csvRecord.toString(), ex);
+                log.error("Failed to convert csv record {}, from file {}", csvRecord.toString(), filename, ex);
             }
         } else {
             throw new EOFException();

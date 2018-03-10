@@ -35,15 +35,15 @@ public class CsvFileSourceTest extends ConnectTest {
 
             log.info("Writing CSV entries to file source");
             BufferedWriter bw = new BufferedWriter(new FileWriter(csvTestFile.toFile()));
-            bw.write("\"id\",\"str\""); // header
-            bw.write("\"1\",\"one\"");
-            bw.write("\"2\",\"two\"");
-            bw.write("\"3\",\"three\"");
-            bw.write("\"4\",\"four\"");
-            bw.write("\"5\",\"five\"");
-            bw.write("\"6\",\"six\"");
-            bw.write("\"7\",\"seven\"");
-            bw.write("\"8\",\"eight\"");
+            bw.write("\"id\",\"str\"\n"); // header
+            bw.write("\"1\",\"one\"\n");
+            bw.write("\"2\",\"two\"\n");
+            bw.write("\"3\",\"three\"\n");
+            bw.write("\"4\",\"four\"\n");
+            bw.write("\"5\",\"five\"\n");
+            bw.write("\"6\",\"six\"\n");
+            bw.write("\"7\",\"seven\"\n");
+            bw.write("\"8\",\"eight\"\n");
             bw.flush();
         } catch (IOException ex) {
             log.error(ex);

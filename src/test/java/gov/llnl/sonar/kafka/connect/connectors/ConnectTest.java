@@ -30,7 +30,7 @@ public abstract class ConnectTest {
 
         Set<GenericData.Record> consumedRecords = new HashSet<>();
         Consumer consumer = confluent.createConsumer(topic);
-        Iterable<ConsumerRecord> consumerStream = consumer.poll(30000);
+        Iterable<ConsumerRecord> consumerStream = consumer.poll(10000);
 
         for (ConsumerRecord consumerRecord : consumerStream) {
 
