@@ -6,7 +6,7 @@ import org.apache.kafka.connect.source.SourceTaskContext;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-abstract class AbstractReader {
+abstract class Reader {
 
     AtomicBoolean breakAndClose = new AtomicBoolean(false);
 

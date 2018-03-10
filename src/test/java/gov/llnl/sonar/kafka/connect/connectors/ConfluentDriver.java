@@ -24,43 +24,44 @@ import java.util.*;
 @Log4j
 public class ConfluentDriver {
 
-    Client restClient;
+    private Client restClient;
     private WebTarget target;
-    private String confluentDir;
 
     private String cmdConfluent;
     private String cmdKafkaTopics;
 
+    static public String REST_URL = "http://localhost:8083";
+    static public String ZOOKEEPER_URL = "localhost:2181";
+    static public String KAFKA_URL = "http://localhost:9092";
+    static public String SCHEMA_REGISTRY_URL = "http://localhost:8081";
+
     ConfluentDriver(String confluentDir) {
 
-        this.confluentDir = confluentDir;
         this.cmdConfluent = confluentDir + "/confluent";
         this.cmdKafkaTopics = confluentDir + "/kafka-topics";
 
-        command(cmdConfluent + " start connect");
+        command("start connect");
 
         connectToRest();
     }
 
     private void connectToRest() {
         restClient = ClientBuilder.newClient();
-        target = restClient.target("http://localhost:8083");
+        target = restClient.target(REST_URL);
     }
 
-
-    private String[] commandWithBash(String command) {
-        return new String[] {
-                "/usr/bin/env bash",
-                "-c",
-                command
-        };
+    public void command(String args) {
+        command(cmdConfluent, args);
     }
 
-    void command(String command) {
-        command(command.split("\\s+"));
+    public void command(String command, String args) {
+        List<String> commandParts = new ArrayList<>();
+        commandParts.add(command);
+        commandParts.addAll(Arrays.asList(args.split("\\s+")));
+        command(commandParts.toArray(new String[0]));
     }
 
-    private void command(String[] command) {
+    public void command(String[] command) {
 
         ProcessBuilder builder = new ProcessBuilder().command(command);
 
@@ -89,7 +90,7 @@ public class ConfluentDriver {
     }
 
     public void deleteTopic(String topic) {
-        command(cmdKafkaTopics + " --zookeeper localhost:2181 --delete --topic " + topic);
+        command(cmdKafkaTopics, "--zookeeper " + ZOOKEEPER_URL + " --delete --topic " + topic);
     }
 
     public String connectorStatus() {
@@ -108,7 +109,7 @@ public class ConfluentDriver {
         return createConnector(jsonConnectorString);
     }
 
-    public String createConnector(String connector) {
+    private String createConnector(String connector) {
         Response response = target.path("connectors")
                 .request()
                 .post(Entity.entity(connector, MediaType.APPLICATION_JSON_TYPE));
@@ -126,10 +127,10 @@ public class ConfluentDriver {
 
     public Consumer createConsumer(String topic) {
         Properties props = new Properties();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA_URL);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "KafkaExampleConsumer");
 
-        SchemaRegistryClient schemaRegistryClient = new CachedSchemaRegistryClient("http://localhost:8081", 2);
+        SchemaRegistryClient schemaRegistryClient = new CachedSchemaRegistryClient(SCHEMA_REGISTRY_URL, 2);
         Deserializer deserializer = new KafkaAvroDeserializer(schemaRegistryClient);
 
         // Create the consumer using props.

@@ -15,7 +15,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 @Slf4j
-public class DirectoryReader extends AbstractReader {
+public class DirectoryReader extends Reader {
     private String canonicalDirname;
     private Path dirPath;
 

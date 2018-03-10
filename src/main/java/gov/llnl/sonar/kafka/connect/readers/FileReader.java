@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class FileReader extends AbstractReader {
+public class FileReader extends Reader {
     private String canonicalFilename;
     private Path canonicalPath;
     private String topic;
