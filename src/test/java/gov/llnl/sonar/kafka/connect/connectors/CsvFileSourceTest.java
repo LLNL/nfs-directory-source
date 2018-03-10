@@ -12,7 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
-import static gov.llnl.sonar.kafka.connect.connectors.TestData.*;
+import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.*;
 
 @Log4j
 public class CsvFileSourceTest extends ConnectTest {
@@ -67,7 +67,7 @@ public class CsvFileSourceTest extends ConnectTest {
         log.info("Creating connector " + csvTestSourceConnector);
         log.info(confluent.createConnector(csvTestSourceConnector, FileSourceConnector.class, configProperties));
 
-        validateTopicContents(confluent, csvTestSourceTopic);
+        validateTopicContents(csvTestSourceTopic, idstrAvroData);
     }
 
     @After

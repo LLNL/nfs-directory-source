@@ -1,5 +1,17 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
+import lombok.extern.log4j.Log4j;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import static junit.framework.TestCase.assertEquals;
+
+@Log4j
 public abstract class ConnectTest {
 
     ConfluentDriver confluent;
@@ -11,4 +23,29 @@ public abstract class ConnectTest {
     public void teardown() {
         confluent.close();
     }
+
+    void validateTopicContents(String topic, Set<GenericData.Record> trueData) {
+
+        log.info("Consuming topic " + topic);
+
+        Set<GenericData.Record> consumedRecords = new HashSet<>();
+        Consumer consumer = confluent.createConsumer(topic);
+        Iterable<ConsumerRecord> consumerStream = consumer.poll(10000);
+
+        for (ConsumerRecord consumerRecord : consumerStream) {
+
+            // Parse to avro record
+            GenericData.Record record = (GenericData.Record) consumerRecord.value();
+            log.info("<<< Consumed record: " + record.toString());
+
+            consumedRecords.add(record);
+
+        }
+
+        consumer.close();
+
+        assertEquals(trueData, consumedRecords);
+    }
+
+
 }

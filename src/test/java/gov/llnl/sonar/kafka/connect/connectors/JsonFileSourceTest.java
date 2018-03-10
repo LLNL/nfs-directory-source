@@ -12,7 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
-import static gov.llnl.sonar.kafka.connect.connectors.TestData.*;
+import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.*;
 
 @Log4j
 public class JsonFileSourceTest extends ConnectTest {
@@ -33,9 +33,8 @@ public class JsonFileSourceTest extends ConnectTest {
 
             log.info("Writing JSON entries to file source");
             BufferedWriter bw = new BufferedWriter(new FileWriter(jsonTestFile));
-            for (String r : testRecords) {
-                bw.write(r + "\n");
-            }
+            bw.write("{\"id\": 1, \"str\": \"one\"}\n");
+            bw.write("{\"id\": 2, \"str\": \"two\"}\n");
             bw.flush();
         } catch (IOException ex) {
             log.error(ex);
@@ -60,7 +59,7 @@ public class JsonFileSourceTest extends ConnectTest {
         log.info("Creating connector " + jsonTestSourceConnector);
         log.info(confluent.createConnector(jsonTestSourceConnector, FileSourceConnector.class, configProperties));
 
-        validateTopicContents(confluent, jsonTestSourceTopic);
+        validateTopicContents(jsonTestSourceTopic, idstrAvroData);
     }
 
     @After
