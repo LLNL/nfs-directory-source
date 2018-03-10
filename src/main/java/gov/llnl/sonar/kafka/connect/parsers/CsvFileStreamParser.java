@@ -12,13 +12,14 @@ import java.util.Iterator;
 import java.util.Map;
 
 @Slf4j
-public class CsvFileStreamParser extends AbstractFileStreamParser {
+public class CsvFileStreamParser extends FileStreamParser {
 
     private String filename;
     private Reader fileReader;
     private Iterator<CSVRecord> csvRecordIterator;
 
     private Struct connectRecordBuilder;
+
 
     public CsvFileStreamParser(String filename,
                                Schema avroSchema) {
@@ -30,7 +31,7 @@ public class CsvFileStreamParser extends AbstractFileStreamParser {
 
         try {
             fileReader = new FileReader(filename);
-            csvRecordIterator = CSVFormat.DEFAULT.parse(fileReader).iterator();
+            csvRecordIterator = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(fileReader).iterator();
             connectRecordBuilder = new Struct(connectSchema);
         } catch (FileNotFoundException ex) {
             log.error("File {} not found", filename, ex);
@@ -46,13 +47,17 @@ public class CsvFileStreamParser extends AbstractFileStreamParser {
         if (csvRecordIterator.hasNext()) {
 
             // TODO: how to catch when csv record parse fails?
-            Map<String, String> csvRecord = csvRecordIterator.next().toMap();
+            log.info("Reading next csv record...");
+            CSVRecord csvRecord = csvRecordIterator.next();
+            Map<String, String> csvRecordMap = csvRecord.toMap();
 
             try {
+                log.info("Building connect record for csv record " + csvRecord.toString());
 
                 Struct record = connectRecordBuilder;
 
-                for (Map.Entry<String, String> field : csvRecord.entrySet()) {
+                // TODO: this will put values as strings, and surely fail...
+                for (Map.Entry<String, String> field : csvRecordMap.entrySet()) {
                     record = record.put(field.getKey(), field.getValue());
                 }
 

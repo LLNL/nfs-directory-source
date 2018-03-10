@@ -1,5 +1,7 @@
 package gov.llnl.sonar.kafka.connect.readers;
 
+import gov.llnl.sonar.kafka.connect.parsers.CsvFileStreamParser;
+import gov.llnl.sonar.kafka.connect.parsers.FileStreamParser;
 import gov.llnl.sonar.kafka.connect.parsers.AvroFileStreamParser;
 import gov.llnl.sonar.kafka.connect.util.ConnectUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +12,7 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
@@ -25,29 +28,49 @@ public class FileReader extends AbstractReader {
     private String partitionField;
     private String offsetField;
 
-    private AvroFileStreamParser avroStreamParser;
+    private FileStreamParser streamParser;
 
     public FileReader(String filename,
                       String topic,
                       org.apache.avro.Schema avroSchema,
                       Long batchSize,
                       String partitionField,
-                      String offsetField) {
+                      String offsetField,
+                      String format) {
 
         this.topic = topic;
         this.batchSize = batchSize;
         this.partitionField = partitionField;
         this.offsetField = offsetField;
 
-        try {
-            File file = new File(filename);
-            this.canonicalPath = file.toPath().toRealPath();
-            this.canonicalFilename = file.getCanonicalPath();
+        while (!breakAndClose.get()) {
+            try {
+                File file = new File(filename);
+                this.canonicalPath = file.toPath().toRealPath();
+                this.canonicalFilename = file.getCanonicalPath();
 
-            this.avroStreamParser = new AvroFileStreamParser(canonicalFilename, avroSchema);
+                switch (format) {
+                    case "csv":
+                        this.streamParser = new CsvFileStreamParser(canonicalFilename, avroSchema);
+                        break;
+                    case "json":
+                        this.streamParser = new AvroFileStreamParser(canonicalFilename, avroSchema);
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Invalid file format " + format);
+                }
 
-        } catch (Exception ex) {
-            log.error(ex.getMessage());
+                break;
+
+            } catch (NoSuchFileException ex) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ex1) {
+                    log.error("Who dares to disturb my slumber?");
+                }
+            } catch (Exception ex) {
+                log.error("Exception:", ex);
+            }
         }
     }
 
@@ -62,14 +85,14 @@ public class FileReader extends AbstractReader {
             // TODO: filestream may be closed here, fix!
 
             try {
-                Object parsedValue = avroStreamParser.read();
+                Object parsedValue = streamParser.read();
 
                 if (parsedValue != null) {
 
                     Map sourcePartition = Collections.singletonMap(partitionField, canonicalFilename);
                     Map sourceOffset = Collections.singletonMap(offsetField, offset);
 
-                    records.add(new SourceRecord(sourcePartition, sourceOffset, topic, avroStreamParser.connectSchema, parsedValue));
+                    records.add(new SourceRecord(sourcePartition, sourceOffset, topic, streamParser.connectSchema, parsedValue));
                     offset++;
 
                 }
@@ -96,7 +119,7 @@ public class FileReader extends AbstractReader {
     public void close() {
         super.close();
         try {
-            avroStreamParser.close();
+            streamParser.close();
         } catch (Exception ex) {
             log.error(ex.getMessage());
         }

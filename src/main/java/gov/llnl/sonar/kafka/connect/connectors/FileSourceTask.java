@@ -46,7 +46,8 @@ public class FileSourceTask extends SourceTask {
                     avroSchema,
                     config.getBatchSize(),
                     PARTITION_FIELD,
-                    OFFSET_FIELD);
+                    OFFSET_FIELD,
+                    config.getFormat());
 
         } catch (Exception ex) {
             log.error(ex.getMessage());
@@ -68,7 +69,7 @@ public class FileSourceTask extends SourceTask {
             return records;
 
         } catch (Exception ex) {
-            log.error(ex.getMessage());
+            log.error("Exception: ", ex);
         }
         return null;
     }

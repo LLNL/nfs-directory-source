@@ -8,7 +8,7 @@ import java.io.EOFException;
 import java.io.IOException;
 
 @Slf4j
-public abstract class AbstractFileStreamParser {
+public abstract class FileStreamParser {
 
     AvroData avroConnectConverter;
     public org.apache.kafka.connect.data.Schema connectSchema;
@@ -17,7 +17,7 @@ public abstract class AbstractFileStreamParser {
 
     public abstract void close() throws IOException;
 
-    AbstractFileStreamParser(Schema avroSchema) {
+    FileStreamParser(Schema avroSchema) {
 
         this.avroConnectConverter = new AvroData(2);
 

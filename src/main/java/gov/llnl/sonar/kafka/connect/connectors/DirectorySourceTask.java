@@ -1,6 +1,7 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
 import gov.llnl.sonar.kafka.connect.readers.DirectoryReader;
+import gov.llnl.sonar.kafka.connect.readers.FileReader;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -38,11 +39,12 @@ public class DirectorySourceTask extends SourceTask {
             }
 
             reader = new DirectoryReader(relativeDirname,
-                                                config.getTopic(),
-                                                avroSchema,
-                                                config.getBatchSize(),
-                                                PARTITION_FIELD,
-                                                OFFSET_FIELD);
+                    config.getTopic(),
+                    avroSchema,
+                    config.getBatchSize(),
+                    PARTITION_FIELD,
+                    OFFSET_FIELD,
+                    config.getFormat());
 
             log.info("Added directory {}", reader.getCanonicalDirname());
 

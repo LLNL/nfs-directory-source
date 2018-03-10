@@ -37,7 +37,8 @@ public class DirectoryReader extends AbstractReader {
                            org.apache.avro.Schema avroSchema,
                            Long batchSize,
                            String partitionField,
-                           String offsetField)
+                           String offsetField,
+                           String format)
         throws IOException {
 
         File dir = new File(dirname);
@@ -64,7 +65,8 @@ public class DirectoryReader extends AbstractReader {
                                  avroSchema,
                                  batchSize,
                                  partitionField,
-                                 offsetField));
+                                 offsetField,
+                                 format));
             } catch (IOException e) {
                 e.printStackTrace();
             }

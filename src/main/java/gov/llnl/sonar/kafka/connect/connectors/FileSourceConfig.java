@@ -56,6 +56,8 @@ public class FileSourceConfig extends AbstractConfig {
     }
 
     public String getFilename() { return this.getString(FILENAME); }
+    public String getFormat() { return this.getString(FORMAT); }
+    public String getFormatOptions() { return this.getString(FORMAT_OPTIONS); }
     public String getTopic() { return this.getString(TOPIC); }
     public String getAvroSchema() { return this.getString(AVRO_SCHEMA); }
     public String getAvroSchemaFilename() { return this.getString(AVRO_SCHEMA_FILENAME); }

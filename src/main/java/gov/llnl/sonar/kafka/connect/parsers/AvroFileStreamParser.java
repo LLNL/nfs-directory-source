@@ -10,7 +10,7 @@ import org.apache.avro.specific.SpecificDatumReader;
 import java.io.*;
 
 @Slf4j
-public class AvroFileStreamParser extends AbstractFileStreamParser {
+public class AvroFileStreamParser extends FileStreamParser {
 
     private FileInputStream fileStream;
 

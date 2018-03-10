@@ -56,6 +56,8 @@ public class DirectorySourceConfig extends AbstractConfig {
 
     public String getDirname() { return this.getString(DIRNAME); }
     public String getTopic() { return this.getString(TOPIC); }
+    public String getFormat() { return this.getString(FORMAT); }
+    public String getFormatOptions() { return this.getString(FORMAT_OPTIONS); }
     public String getAvroSchema() { return this.getString(AVRO_SCHEMA); }
     public String getAvroSchemaFilename() { return this.getString(AVRO_SCHEMA_FILENAME); }
     public Long getBatchSize() { return this.getLong(BATCH_SIZE); }
