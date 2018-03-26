@@ -60,7 +60,12 @@ public class DirectorySourceTask extends SourceTask {
 
         try {
             Long numRecordsRead = reader.read(records, context);
-            log.info("Read {} records from directory {}", numRecordsRead, reader.getCanonicalDirname());
+            if (numRecordsRead > 0)
+                log.info("Read {} records from directory {}", numRecordsRead, reader.getCanonicalDirname());
+            else {
+                log.info("No records read from {}, sleeping for 1 second", reader.getCanonicalDirname());
+                Thread.sleep(1000);
+            }
             return records;
         } catch (Exception ex) {
             log.error("Exception:", ex);
