@@ -51,6 +51,20 @@ public class AvroFileStreamParser extends FileStreamParser {
     }
 
     @Override
+    public void skip(Long numRecords) throws EOFException {
+        for (Long i = 0L; i < numRecords; i++) {
+            try {
+                datumReader.read(datum, decoder);
+            } catch (EOFException e) {
+                throw e;
+            } catch (IOException e) {
+                // Ignore parse errors and skip
+                continue;
+            }
+        }
+    }
+
+    @Override
     public void close() throws IOException {
         fileStream.close();
     }

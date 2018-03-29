@@ -14,6 +14,7 @@ public abstract class FileStreamParser {
     public org.apache.kafka.connect.data.Schema connectSchema;
 
     public abstract Object read() throws EOFException;
+    public abstract void skip(Long numRecords) throws EOFException;
 
     public abstract void close() throws IOException;
 

@@ -11,6 +11,7 @@ import org.apache.kafka.connect.errors.DataException;
 import java.io.*;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @Slf4j
 public class CsvFileStreamParser extends FileStreamParser {
@@ -44,25 +45,35 @@ public class CsvFileStreamParser extends FileStreamParser {
     @Override
     public Object read() throws EOFException {
 
-        if (csvRecordIterator.hasNext()) {
+        // TODO: how to catch when csv record parse fails?
 
-            // TODO: how to catch when csv record parse fails?
-            log.info("Reading next csv record...");
+        try {
+            log.debug("Reading next csv record...");
             CSVRecord csvRecord = csvRecordIterator.next();
 
             try {
-
-                log.info("Building connect record for csv record {}", csvRecord.toString());
+                log.debug("Building connect record for csv record {}", csvRecord.toString());
                 return csvRecordConverter.convert(csvRecord);
 
             } catch (DataException ex) {
                 log.error("Failed to convert csv record {}, from file {}", csvRecord.toString(), filename, ex);
             }
-        } else {
+        } catch (NoSuchElementException e) {
             throw new EOFException();
         }
 
         return null;
+    }
+
+    @Override
+    public void skip(Long numRecords) throws EOFException {
+        for(Long i = 0L; i < numRecords; i++) {
+            try {
+                csvRecordIterator.next();
+            } catch (NoSuchElementException e) {
+                throw new EOFException();
+            }
+        }
     }
 
     @Override

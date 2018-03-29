@@ -74,9 +74,26 @@ public class FileReader extends Reader {
         }
     }
 
+    private void purgeFile() {
+        try {
+            log.info("Purging ingested file {}", canonicalFilename);
+            Files.delete(canonicalPath);
+        } catch (IOException e1) {
+            log.error("Error deleting file {}", canonicalFilename);
+        }
+        close();
+    }
+
     @Override
     public Long read(List<SourceRecord> records, SourceTaskContext context) {
         Long i, offset = ConnectUtil.getStreamOffset(context, partitionField, offsetField, canonicalFilename);
+
+        try {
+            streamParser.skip(offset);
+        } catch (EOFException e) {
+            purgeFile();
+        }
+
         for (i = 0L; i < batchSize; i++) {
 
             if (breakAndClose.get())
@@ -98,13 +115,7 @@ public class FileReader extends Reader {
                 }
 
             } catch (EOFException e) {
-                try {
-                    log.info("Purging ingested file {}", canonicalFilename);
-                    Files.delete(canonicalPath);
-                    close();
-                } catch (IOException e1) {
-                    log.error("Error deleting file {}", canonicalFilename);
-                }
+                purgeFile();
             }
 
         }
