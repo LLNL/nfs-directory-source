@@ -63,8 +63,10 @@ public class DirectorySourceTask extends SourceTask {
             if (numRecordsRead > 0)
                 log.info("Read {} records from directory {}", numRecordsRead, reader.getCanonicalDirname());
             else {
-                log.info("No records read from {}, sleeping for 1 second", reader.getCanonicalDirname());
-                Thread.sleep(1000);
+                log.debug("No records read from {}, sleeping for 1 second", reader.getCanonicalDirname());
+                synchronized (this) {
+                    this.wait(1000);
+                }
             }
             return records;
         } catch (Exception ex) {
@@ -77,10 +79,13 @@ public class DirectorySourceTask extends SourceTask {
     @Override
     public void stop() {
         log.info("Task stopping");
-        try {
-            reader.close();
-        } catch (Exception ex) {
-            log.error("Exception:", ex);
+        synchronized (this) {
+            try {
+                reader.close();
+            } catch (Exception ex) {
+                log.error("Exception:", ex);
+            }
+            this.notify();
         }
     }
 }

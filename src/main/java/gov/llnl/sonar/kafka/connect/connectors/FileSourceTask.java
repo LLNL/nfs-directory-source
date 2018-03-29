@@ -76,10 +76,13 @@ public class FileSourceTask extends SourceTask {
     @Override
     public void stop() {
         log.info("Task stopping");
-        try {
-            reader.close();
-        } catch (Exception ex) {
-            log.error("Exception:", ex);
+        synchronized(this) {
+            try {
+                reader.close();
+            } catch (Exception ex) {
+                log.error("Exception:", ex);
+            }
+            reader.notify();
         }
     }
 }

@@ -64,7 +64,9 @@ public class FileReader extends Reader {
 
             } catch (NoSuchFileException ex) {
                 try {
-                    Thread.sleep(1000);
+                    synchronized (this) {
+                        this.wait(1000);
+                    }
                 } catch (InterruptedException ex1) {
                     log.error("Who dares to disturb my slumber?");
                 }
