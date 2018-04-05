@@ -1,6 +1,7 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -12,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 public class DirectorySourceConnector extends SourceConnector {
 
     private DirectorySourceConfig config;
@@ -33,6 +35,7 @@ public class DirectorySourceConnector extends SourceConnector {
 
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
+        log.info("Creating {} directory source tasks", maxTasks);
         return new ArrayList<>(Collections.nCopies(maxTasks, config.originalsStrings()));
     }
 

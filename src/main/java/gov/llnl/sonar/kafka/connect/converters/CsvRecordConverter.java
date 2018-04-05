@@ -1,7 +1,6 @@
 package gov.llnl.sonar.kafka.connect.converters;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.csv.CSVRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
@@ -10,7 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 
 @Slf4j
-public class CsvRecordConverter extends Converter<CSVRecord>{
+public class CsvRecordConverter extends Converter<Map<String, String>>{
 
     private final Schema connectSchema;
 
@@ -49,8 +48,7 @@ public class CsvRecordConverter extends Converter<CSVRecord>{
     }
 
     @Override
-    public Object convert(CSVRecord from) {
-        Map<String, String> recordMap = from.toMap();
+    public Object convert(Map<String, String> recordMap) {
         Struct record = new Struct(connectSchema);
 
         for (Map.Entry<String, String> entry : recordMap.entrySet()) {

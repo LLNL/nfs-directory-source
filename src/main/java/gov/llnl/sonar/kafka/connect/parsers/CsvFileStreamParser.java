@@ -3,24 +3,22 @@ package gov.llnl.sonar.kafka.connect.parsers;
 import gov.llnl.sonar.kafka.connect.converters.CsvRecordConverter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVRecord;
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
+import org.supercsv.io.CsvMapReader;
+import org.supercsv.prefs.CsvPreference;
 
 import java.io.*;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
 @Slf4j
 public class CsvFileStreamParser extends FileStreamParser {
 
     private String filename;
     private Reader fileReader;
-    private Iterator<CSVRecord> csvRecordIterator;
+    private CsvMapReader reader;
 
     private CsvRecordConverter csvRecordConverter;
+    private String[] header;
 
     public CsvFileStreamParser(String filename,
                                Schema avroSchema) {
@@ -32,12 +30,15 @@ public class CsvFileStreamParser extends FileStreamParser {
 
         try {
             fileReader = new FileReader(filename);
-            csvRecordIterator = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(fileReader).iterator();
+            reader = new CsvMapReader(fileReader, CsvPreference.STANDARD_PREFERENCE);
+
+            header = reader.getHeader(true);
+
             csvRecordConverter = new CsvRecordConverter(connectSchema);
         } catch (FileNotFoundException ex) {
             log.error("File {} not found", filename, ex);
-        } catch (IOException ex) {
-            log.error("Exception:", ex);
+        } catch (IOException e) {
+            log.error("IOException:", e);
         }
 
     }
@@ -45,11 +46,11 @@ public class CsvFileStreamParser extends FileStreamParser {
     @Override
     public Object read() throws EOFException {
 
-        // TODO: how to catch when csv record parse fails?
-
         try {
             log.debug("Reading next csv record...");
-            CSVRecord csvRecord = csvRecordIterator.next();
+            Map<String, String> csvRecord = reader.read(header);
+            if (csvRecord == null)
+                throw new EOFException();
 
             try {
                 log.debug("Building connect record for csv record {}", csvRecord.toString());
@@ -58,8 +59,8 @@ public class CsvFileStreamParser extends FileStreamParser {
             } catch (DataException ex) {
                 log.error("Failed to convert csv record {}, from file {}", csvRecord.toString(), filename, ex);
             }
-        } catch (NoSuchElementException e) {
-            throw new EOFException();
+        } catch (IOException e) {
+            log.error("IOException:", e);
         }
 
         return null;
@@ -69,9 +70,11 @@ public class CsvFileStreamParser extends FileStreamParser {
     public void skip(Long numRecords) throws EOFException {
         for(Long i = 0L; i < numRecords; i++) {
             try {
-                csvRecordIterator.next();
-            } catch (NoSuchElementException e) {
-                throw new EOFException();
+                Map<String, String> csvRecord = reader.read(header);
+                if (csvRecord == null)
+                    throw new EOFException();
+            } catch (IOException e) {
+                log.error("IOException:", e);
             }
         }
     }

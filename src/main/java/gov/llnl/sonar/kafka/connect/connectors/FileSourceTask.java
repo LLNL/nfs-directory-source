@@ -1,5 +1,6 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
+import gov.llnl.sonar.kafka.connect.exceptions.FilePurgedException;
 import gov.llnl.sonar.kafka.connect.readers.FileReader;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -67,6 +68,8 @@ public class FileSourceTask extends SourceTask {
 
             return records;
 
+        } catch (FilePurgedException p) {
+            log.info("File purged");
         } catch (Exception ex) {
             log.error("Exception:", ex);
         }
@@ -77,6 +80,7 @@ public class FileSourceTask extends SourceTask {
     public void stop() {
         log.info("Task stopping");
         synchronized(this) {
+            this.notifyAll();
             try {
                 reader.close();
             } catch (Exception ex) {

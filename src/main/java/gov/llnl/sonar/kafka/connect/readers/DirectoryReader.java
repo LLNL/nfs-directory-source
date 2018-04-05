@@ -1,6 +1,7 @@
 package gov.llnl.sonar.kafka.connect.readers;
 
 import gov.llnl.sonar.kafka.connect.exceptions.BreakException;
+import javafx.util.Pair;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
@@ -8,11 +9,19 @@ import org.apache.kafka.connect.source.SourceTaskContext;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+
+import static java.nio.file.StandardOpenOption.READ;
+import static java.nio.file.StandardOpenOption.WRITE;
 
 @Slf4j
 public class DirectoryReader extends Reader {
@@ -21,7 +30,7 @@ public class DirectoryReader extends Reader {
 
     private Long filesPerBatch = 10L;
 
-    private Supplier<Stream<FileReader>> fileReaderSupplier;
+    private Supplier<Iterator<FileReader>> fileReaderSupplier;
 
     private String uncheckedGetCanonicalPath(Path path) {
         try {
@@ -54,19 +63,32 @@ public class DirectoryReader extends Reader {
         log.info("Adding all files in {}", canonicalDirname);
 
         fileReaderSupplier = () -> {
-            Stream<FileReader> fileReaderStream = null;
+            Iterator<FileReader> fileReaderStream = null;
             try {
-                 fileReaderStream = Files.walk(dirPath)
-                         .filter(Files::isRegularFile)
-                         .limit(filesPerBatch)
-                         .map((Path p) -> new FileReader(
-                                 uncheckedGetCanonicalPath(p),
-                                 topic,
-                                 avroSchema,
-                                 batchSize,
-                                 partitionField,
-                                 offsetField,
-                                 format));
+                fileReaderStream = Files.walk(dirPath)
+                        .filter(Files::isRegularFile)
+                        .map((Path p) -> {
+                            try {
+                                FileLock fileLock = FileChannel.open(p, READ, WRITE).tryLock();
+                                if (fileLock != null && fileLock.isValid())
+                                    return new Pair<FileLock, Path>(fileLock, p);
+                            } catch (OverlappingFileLockException | IOException e) {
+                            }
+                            return null;
+                        })
+                        .filter(Objects::nonNull)
+                        .filter((Pair<FileLock, Path> lockedPath) -> lockedPath.getKey().isValid())
+                        .limit(filesPerBatch)
+                        .map((Pair<FileLock, Path> lockedPath) -> new FileReader(
+                                uncheckedGetCanonicalPath(lockedPath.getValue()),
+                                topic,
+                                avroSchema,
+                                batchSize,
+                                partitionField,
+                                offsetField,
+                                format,
+                                lockedPath.getKey()))
+                        .iterator();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -79,22 +101,33 @@ public class DirectoryReader extends Reader {
 
         try {
 
-            final Stream<FileReader> fileReaders = fileReaderSupplier.get();
+            final Iterator<FileReader> fileReaders = fileReaderSupplier.get();
+            Long numRecords = 0L;
 
-            // TODO: sleep if no files in directory
-
-            return fileReaders.map(reader -> {
+            while (true) {
 
                 if (breakAndClose.get())
                     throw new BreakException();
+
+                final FileReader reader;
+                try {
+                    if (fileReaders.hasNext())
+                        reader = fileReaders.next();
+                    else
+                        break;
+                } catch (UncheckedIOException ioe) {
+                    continue;
+                }
 
                 log.info("Ingesting file {}", reader.getCanonicalFilename());
                 Long numRecordsFile = reader.read(records, context);
                 log.info("Read {} records from file {}", numRecordsFile, reader.getCanonicalFilename());
                 reader.close();
 
-                return numRecordsFile;
-            }).mapToLong(l -> l).sum();
+                numRecords += numRecordsFile;
+            }
+
+            return numRecords;
 
         } catch (BreakException b) {
             log.info("Read interrupted, closing reader");

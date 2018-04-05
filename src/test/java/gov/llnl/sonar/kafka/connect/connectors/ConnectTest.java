@@ -30,16 +30,19 @@ public abstract class ConnectTest {
 
         Set<GenericData.Record> consumedRecords = new HashSet<>();
         Consumer consumer = confluent.createConsumer(topic);
-        Iterable<ConsumerRecord> consumerStream = consumer.poll(10000);
 
-        for (ConsumerRecord consumerRecord : consumerStream) {
+        while (consumedRecords.size() < trueData.size()) {
 
-            // Parse to avro record
-            GenericData.Record record = (GenericData.Record) consumerRecord.value();
-            log.info("<<< Consumed record: " + record.toString());
+            Iterable<ConsumerRecord> consumerStream = consumer.poll(10000);
+            for (ConsumerRecord consumerRecord : consumerStream) {
 
-            consumedRecords.add(record);
+                // Parse to avro record
+                GenericData.Record record = (GenericData.Record) consumerRecord.value();
+                log.info("<<< Consumed record: " + record.toString());
 
+                consumedRecords.add(record);
+
+            }
         }
 
         consumer.close();

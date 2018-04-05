@@ -37,7 +37,6 @@ public class DirectorySourceTest extends ConnectTest {
             log.info("Creating test directory");
             testDirectory = Files.createTempDirectory("test-directory-source-");
 
-
             log.info("Creating files in test directory");
             File testFile = File.createTempFile("json-test-file-", ".json", testDirectory.toFile());
             BufferedWriter bw = new BufferedWriter(new FileWriter(testFile));
@@ -72,6 +71,7 @@ public class DirectorySourceTest extends ConnectTest {
         testDirectorySourceConnector = testDirBasename;
         testDirectorySourceTopic = testDirBasename + "-topic";
 
+        configProperties.put("tasks.max", "3");
         configProperties.put(DirectorySourceConfig.DIRNAME, testDirname);
         configProperties.put(DirectorySourceConfig.FORMAT, "json");
         configProperties.put(DirectorySourceConfig.FORMAT_OPTIONS, "");
