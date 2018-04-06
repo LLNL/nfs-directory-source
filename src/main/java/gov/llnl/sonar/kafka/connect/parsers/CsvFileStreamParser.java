@@ -4,6 +4,7 @@ import gov.llnl.sonar.kafka.connect.converters.CsvRecordConverter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.kafka.connect.errors.DataException;
+import org.supercsv.exception.SuperCsvException;
 import org.supercsv.io.CsvMapReader;
 import org.supercsv.prefs.CsvPreference;
 
@@ -59,6 +60,9 @@ public class CsvFileStreamParser extends FileStreamParser {
             } catch (DataException ex) {
                 log.error("Failed to convert csv record {}, from file {}", csvRecord.toString(), filename, ex);
             }
+        } catch (SuperCsvException e) {
+            log.error("Failed to parse CSV file {} at line {}", filename, reader.getLineNumber());
+            log.error("SuperCsvException:", e);
         } catch (IOException e) {
             log.error("IOException:", e);
         }
