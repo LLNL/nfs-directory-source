@@ -5,7 +5,7 @@
     <groupId>gov.llnl.sonar.kafka.connectors</groupId>
     <artifactId>sonar-connectors</artifactId>
     <version>0.1</version>
-    <packaging>pom</packaging>
+    <packaging>jar</packaging>
 
     <name>sonar-kafka-connectors</name>
     <description>Sonar Kafka Connectors</description>
@@ -117,28 +117,6 @@
                     <target>1.8</target>
                 </configuration>
             </plugin>
-            <!--
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.1.0</version>
-                <executions>
-                    <execution>
-                        <id>copy-dependencies</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}</outputDirectory>
-                            <overWriteReleases>false</overWriteReleases>
-                            <overWriteSnapshots>false</overWriteSnapshots>
-                            <overWriteIfNewer>true</overWriteIfNewer>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            -->
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>2.5.3</version>
@@ -146,6 +124,7 @@
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
+                    <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
                 <executions>
                     <execution>
@@ -157,42 +136,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <!--
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>rpm-maven-plugin</artifactId>
-                <version>2.1.5</version>
-                <extensions>true</extensions>
-                <executions>
-                    <execution>
-                        <id>generate-rpm</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>rpm</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <group>Applications/Internet</group>
-                    <packager>Sonar Packaging</packager>
-                    <needarch>noarch</needarch>
-                    <targetOS>linux</targetOS>
-                    <requires>
-                        <require>confluent-common = 4.0.0</require>
-                    </requires>
-                    <mapping>
-                        <mapping>
-                            <directory>/usr/share/java/${project.artifactId}</directory>
-                            <sources>
-                                <source>
-                                    <location>target/sonar-connectors-0.1-jar-with-dependencies.jar</location>
-                                </source>
-                            </sources>
-                        </mapping>
-                    </mapping>
-                </configuration>
-            </plugin>
-            -->
         </plugins>
         <resources>
             <resource>
