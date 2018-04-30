@@ -1,8 +1,10 @@
 package gov.llnl.sonar.kafka.connect.readers;
 
 import gov.llnl.sonar.kafka.connect.exceptions.BreakException;
-import javafx.util.Pair;
+
 import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
 
@@ -18,7 +20,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -71,15 +72,15 @@ public class DirectoryReader extends Reader {
                             try {
                                 FileLock fileLock = FileChannel.open(p, READ, WRITE).tryLock();
                                 if (fileLock != null && fileLock.isValid())
-                                    return new Pair<FileLock, Path>(fileLock, p);
+                                    return new ImmutablePair<FileLock, Path>(fileLock, p);
                             } catch (OverlappingFileLockException | IOException e) {
                             }
                             return null;
                         })
                         .filter(Objects::nonNull)
-                        .filter((Pair<FileLock, Path> lockedPath) -> lockedPath.getKey().isValid())
+                        .filter((ImmutablePair<FileLock, Path> lockedPath) -> lockedPath.getKey().isValid())
                         .limit(filesPerBatch)
-                        .map((Pair<FileLock, Path> lockedPath) -> new FileReader(
+                        .map((ImmutablePair<FileLock, Path> lockedPath) -> new FileReader(
                                 uncheckedGetCanonicalPath(lockedPath.getValue()),
                                 topic,
                                 avroSchema,

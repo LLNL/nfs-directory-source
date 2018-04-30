@@ -4,7 +4,7 @@ import gov.llnl.sonar.kafka.connect.exceptions.FileLockedException;
 import gov.llnl.sonar.kafka.connect.exceptions.FilePurgedException;
 import gov.llnl.sonar.kafka.connect.parsers.CsvFileStreamParser;
 import gov.llnl.sonar.kafka.connect.parsers.FileStreamParser;
-import gov.llnl.sonar.kafka.connect.parsers.AvroFileStreamParser;
+import gov.llnl.sonar.kafka.connect.parsers.JsonFileStreamParser;
 import gov.llnl.sonar.kafka.connect.util.ConnectUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -84,7 +84,7 @@ public class FileReader extends Reader {
                         this.streamParser = new CsvFileStreamParser(canonicalFilename, avroSchema);
                         break;
                     case "json":
-                        this.streamParser = new AvroFileStreamParser(canonicalFilename, avroSchema);
+                        this.streamParser = new JsonFileStreamParser(canonicalFilename, avroSchema);
                         break;
                     default:
                         throw new IllegalArgumentException("Invalid file format " + format);

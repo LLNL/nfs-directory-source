@@ -63,6 +63,8 @@ public class CsvFileStreamParser extends FileStreamParser {
         } catch (SuperCsvException e) {
             log.error("Failed to parse CSV file {} at line {}", filename, reader.getLineNumber());
             log.error("SuperCsvException:", e);
+        } catch (EOFException e) {
+            throw e;
         } catch (IOException e) {
             log.error("IOException:", e);
         }

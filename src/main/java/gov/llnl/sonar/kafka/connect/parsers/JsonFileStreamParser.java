@@ -10,7 +10,7 @@ import org.apache.avro.specific.SpecificDatumReader;
 import java.io.*;
 
 @Slf4j
-public class AvroFileStreamParser extends FileStreamParser {
+public class JsonFileStreamParser extends FileStreamParser {
 
     private FileInputStream fileStream;
 
@@ -18,7 +18,7 @@ public class AvroFileStreamParser extends FileStreamParser {
     private SpecificDatumReader<GenericData.Record> datumReader;
     private GenericData.Record datum;
 
-    public AvroFileStreamParser(String filename,
+    public JsonFileStreamParser(String filename,
                                 Schema avroSchema) {
 
         super(avroSchema);
