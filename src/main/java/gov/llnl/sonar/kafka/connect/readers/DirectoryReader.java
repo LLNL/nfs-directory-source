@@ -17,7 +17,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
+import static java.nio.file.Files.walk;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 
@@ -28,7 +30,12 @@ public class DirectoryReader extends Reader {
 
     private Long filesPerBatch = 10L;
 
-    private Supplier<Iterator<FileReader>> fileReaderSupplier;
+    private String topic;
+    private org.apache.avro.Schema avroSchema;
+    private Long batchSize;
+    private String partitionField;
+    private String offsetField;
+    private String format;
 
     private String uncheckedGetCanonicalPath(Path path) {
         try {
@@ -48,6 +55,13 @@ public class DirectoryReader extends Reader {
                            String format)
         throws IOException {
 
+        this.topic = topic;
+        this.avroSchema = avroSchema;
+        this.batchSize = batchSize;
+        this.partitionField = partitionField;
+        this.offsetField = offsetField;
+        this.format = format;
+
         File dir = new File(dirname);
         dirPath = dir.toPath();
         canonicalDirname = dir.getCanonicalPath();
@@ -57,81 +71,73 @@ public class DirectoryReader extends Reader {
         if (!isFolder) {
             throw new IOException(canonicalDirname + " is not a directory!");
         }
+    }
 
-        log.info("Adding all files in {}", canonicalDirname);
-
-        fileReaderSupplier = () -> {
-            Iterator<FileReader> fileReaderStream = null;
-            try {
-                fileReaderStream = Files.walk(dirPath)
-                        .filter(Files::isRegularFile)
-                        .map((Path p) -> {
-                            try {
-                                FileLock fileLock = FileChannel.open(p, READ, WRITE).tryLock();
-                                if (fileLock != null && fileLock.isValid())
-                                    return new HashMap.SimpleImmutableEntry<FileLock, Path>(fileLock, p);
-                            } catch (OverlappingFileLockException | IOException e) {
-                            }
-                            return null;
-                        })
-                        .filter(Objects::nonNull)
-                        .filter((HashMap.SimpleImmutableEntry<FileLock, Path> lockedPath) -> lockedPath.getKey().isValid())
-                        .limit(filesPerBatch)
-                        .map((HashMap.SimpleImmutableEntry<FileLock, Path> lockedPath) -> new FileReader(
-                                uncheckedGetCanonicalPath(lockedPath.getValue()),
-                                topic,
-                                avroSchema,
-                                batchSize,
-                                partitionField,
-                                offsetField,
-                                format,
-                                lockedPath.getKey()))
-                        .iterator();
-            } catch (IOException e) {
-                e.printStackTrace();
+    private FileReader getNextFileReader(Path p) {
+        try {
+            FileLock fileLock = FileChannel.open(p, READ, WRITE).tryLock();
+            if (fileLock != null && fileLock.isValid()) {
+                 return new FileReader(
+                         p.toRealPath().toString(),
+                         topic,
+                         avroSchema,
+                         batchSize,
+                         partitionField,
+                         offsetField,
+                         format,
+                         fileLock);
             }
-            return fileReaderStream;
-        };
+        } catch (OverlappingFileLockException e) {
+            log.info("File {} was locked, exception:", e);
+        } catch (IOException e) {
+            log.error("Exception:", e);
+        }
+        return null;
     }
 
     @Override
     public Long read(List<SourceRecord> records, SourceTaskContext context) {
 
+        Long numRecords = 0L;
+
         try {
 
-            final Iterator<FileReader> fileReaders = fileReaderSupplier.get();
-            Long numRecords = 0L;
+            Iterator<Path> pathWalker = Files.walk(dirPath).filter(Files::isRegularFile).iterator();
 
             while (true) {
 
                 if (breakAndClose.get())
                     throw new BreakException();
 
-                final FileReader reader;
+                if (!pathWalker.hasNext())
+                    throw new BreakException();
+
+                final FileReader reader = getNextFileReader(pathWalker.next());
                 try {
-                    if (fileReaders.hasNext())
-                        reader = fileReaders.next();
-                    else
-                        break;
-                } catch (UncheckedIOException ioe) {
-                    continue;
+
+                    if (reader == null) {
+                        log.error("file reader null due to lock or exception");
+                        Thread.sleep(1000);
+                        continue;
+                    }
+
+                    log.info("Ingesting file {}", reader.getCanonicalFilename());
+                    Long numRecordsFile = reader.read(records, context);
+                    log.info("Read {} records from file {}", numRecordsFile, reader.getCanonicalFilename());
+                    reader.close();
+
+                    numRecords += numRecordsFile;
+                } catch (Exception e) {
+                    log.error("Exception:", e);
                 }
-
-                log.info("Ingesting file {}", reader.getCanonicalFilename());
-                Long numRecordsFile = reader.read(records, context);
-                log.info("Read {} records from file {}", numRecordsFile, reader.getCanonicalFilename());
-                reader.close();
-
-                numRecords += numRecordsFile;
             }
-
-            return numRecords;
-
+        } catch (IOException e) {
+            log.error("Exception:", e);
         } catch (BreakException b) {
-            log.info("Read interrupted, closing reader");
+            log.info("Reader loop exited");
         }
 
-        return -1L;
+        return numRecords;
     }
 
     public String getCanonicalDirname() {

@@ -50,6 +50,8 @@ public class DirectorySourceTask extends SourceTask {
 
         } catch (Exception ex) {
             log.error("Exception:", ex);
+            log.error("Start failed, stopping task!");
+            this.stop();
         }
     }
 
@@ -71,6 +73,9 @@ public class DirectorySourceTask extends SourceTask {
             return records;
         } catch (Exception ex) {
             log.error("Exception:", ex);
+            synchronized (this) {
+                this.wait(1000);
+            }
         }
 
         return null;
