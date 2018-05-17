@@ -18,6 +18,7 @@ import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,7 @@ import static java.nio.file.StandardOpenOption.WRITE;
 public class FileReader extends Reader {
     private String canonicalFilename;
     private Path canonicalPath;
+    private Path completedDirectoryPath;
     private String topic;
     private FileChannel fileChannel;
     private FileLock fileLock;
@@ -40,6 +42,7 @@ public class FileReader extends Reader {
     private FileStreamParser streamParser;
 
     public FileReader(String filename,
+                      String completedDirectoryName,
                       String topic,
                       org.apache.avro.Schema avroSchema,
                       Long batchSize,
@@ -47,7 +50,7 @@ public class FileReader extends Reader {
                       String offsetField,
                       String format,
                       FileLock fileLock) {
-        this(filename, topic, avroSchema, batchSize, partitionField, offsetField, format);
+        this(filename, completedDirectoryName, topic, avroSchema, batchSize, partitionField, offsetField, format);
 
         // Replace filechannel with filelock's channel
         try {
@@ -60,6 +63,7 @@ public class FileReader extends Reader {
     }
 
     public FileReader(String filename,
+                      String completedDirectoryName,
                       String topic,
                       org.apache.avro.Schema avroSchema,
                       Long batchSize,
@@ -77,6 +81,7 @@ public class FileReader extends Reader {
                 File file = new File(filename);
                 this.canonicalPath = file.toPath().toRealPath();
                 this.canonicalFilename = file.getCanonicalPath();
+                this.completedDirectoryPath = Paths.get(completedDirectoryName,filename + ".COMPLETED");
                 this.fileChannel = FileChannel.open(canonicalPath, READ, WRITE);
 
                 switch (format) {
@@ -109,9 +114,10 @@ public class FileReader extends Reader {
     private void purgeFile() {
         try {
             log.info("Purging ingested file {}", canonicalFilename);
-            Files.delete(canonicalPath);
-        } catch (IOException e1) {
-            log.error("Error deleting file {}", canonicalFilename);
+            Files.move(canonicalPath, completedDirectoryPath);
+        } catch (IOException e) {
+            log.error("Error moving ingested file {}", canonicalFilename);
+            log.error("IOException:", e);
         }
         close();
     }
@@ -147,7 +153,7 @@ public class FileReader extends Reader {
             try {
                 fileLock = fileChannel.tryLock();
                 if (fileLock == null) {
-                    log.info("File {} locked, waiting for a second before trying again...");
+                    log.info("File {} locked, waiting for a second before trying again...", canonicalFilename);
                     return safeReturn(0L, 1000);
                 }
             } catch (IOException e) {

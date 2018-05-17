@@ -30,6 +30,7 @@ public class DirectorySourceTask extends SourceTask {
         DirectorySourceConfig config = new DirectorySourceConfig(map);
         try {
             String relativeDirname = config.getDirname();
+            String completedDirname = config.getCompletedDirname();
 
             org.apache.avro.Schema avroSchema;
             if (!config.getAvroSchema().isEmpty()) {
@@ -38,7 +39,9 @@ public class DirectorySourceTask extends SourceTask {
                 avroSchema = new org.apache.avro.Schema.Parser().parse(new File(config.getAvroSchemaFilename()));
             }
 
-            reader = new DirectoryReader(relativeDirname,
+            reader = new DirectoryReader(
+                    relativeDirname,
+                    completedDirname,
                     config.getTopic(),
                     avroSchema,
                     config.getBatchSize(),

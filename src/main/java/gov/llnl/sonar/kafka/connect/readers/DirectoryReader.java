@@ -26,6 +26,7 @@ import static java.nio.file.StandardOpenOption.WRITE;
 @Slf4j
 public class DirectoryReader extends Reader {
     private String canonicalDirname;
+    private String completedDirectoryName;
     private Path dirPath;
 
     private Long filesPerBatch = 10L;
@@ -47,6 +48,7 @@ public class DirectoryReader extends Reader {
     }
 
     public DirectoryReader(String dirname,
+                           String completedDirectoryName,
                            String topic,
                            org.apache.avro.Schema avroSchema,
                            Long batchSize,
@@ -55,6 +57,7 @@ public class DirectoryReader extends Reader {
                            String format)
         throws IOException {
 
+        this.completedDirectoryName = completedDirectoryName;
         this.topic = topic;
         this.avroSchema = avroSchema;
         this.batchSize = batchSize;
@@ -79,6 +82,7 @@ public class DirectoryReader extends Reader {
             if (fileLock != null && fileLock.isValid()) {
                  return new FileReader(
                          p.toRealPath().toString(),
+                         completedDirectoryName,
                          topic,
                          avroSchema,
                          batchSize,
@@ -88,7 +92,7 @@ public class DirectoryReader extends Reader {
                          fileLock);
             }
         } catch (OverlappingFileLockException e) {
-            log.info("File {} was locked, exception:", e);
+            log.info("File {} was locked, exception:", p.toString());
         } catch (IOException e) {
             log.error("Exception:", e);
         }
@@ -106,17 +110,20 @@ public class DirectoryReader extends Reader {
 
             while (true) {
 
-                if (breakAndClose.get())
+                if (breakAndClose.get()) {
+                    log.info("Reader interrupted, exiting reader loop");
                     throw new BreakException();
+                }
 
-                if (!pathWalker.hasNext())
+                if (!pathWalker.hasNext()) {
+                    log.info("All files processed, exiting reader loop");
                     throw new BreakException();
+                }
 
                 final FileReader reader = getNextFileReader(pathWalker.next());
                 try {
 
                     if (reader == null) {
-                        log.error("file reader null due to lock or exception");
                         Thread.sleep(1000);
                         continue;
                     }

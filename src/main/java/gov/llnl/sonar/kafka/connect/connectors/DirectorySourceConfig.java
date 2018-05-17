@@ -17,7 +17,9 @@ public class DirectorySourceConfig extends AbstractConfig {
     }
 
     public static final String DIRNAME = "dirname";
-    public static final String DIRNAME_DOC = "The name of the directory to read from.";
+    public static final String DIRNAME_DOC = "The directory to read from.";
+    public static final String COMPLETED_DIRNAME = "completed.dirname";
+    public static final String COMPLETED_DIRNAME_DOC = "The directory to move ingested files into.";
     public static final String TOPIC = "topic";
     public static final String TOPIC_DOC = "The name of the topic to stream to.";
     public static final String FORMAT = "format";
@@ -45,6 +47,7 @@ public class DirectorySourceConfig extends AbstractConfig {
     public static ConfigDef conf() {
         return new ConfigDef()
                 .define(DIRNAME, Type.STRING, Importance.HIGH, DIRNAME_DOC)
+                .define(COMPLETED_DIRNAME, Type.STRING, Importance.HIGH, COMPLETED_DIRNAME_DOC)
                 .define(TOPIC, Type.STRING, Importance.HIGH, TOPIC_DOC)
                 .define(FORMAT, Type.STRING, Importance.HIGH, FORMAT_DOC)
                 .define(FORMAT_OPTIONS, Type.STRING, "", Importance.LOW, FORMAT_OPTIONS_DOC)
@@ -55,6 +58,7 @@ public class DirectorySourceConfig extends AbstractConfig {
     }
 
     public String getDirname() { return this.getString(DIRNAME); }
+    public String getCompletedDirname() { return this.getString(COMPLETED_DIRNAME); }
     public String getTopic() { return this.getString(TOPIC); }
     public String getFormat() { return this.getString(FORMAT); }
     public String getFormatOptions() { return this.getString(FORMAT_OPTIONS); }
