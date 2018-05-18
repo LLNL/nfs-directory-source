@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 
@@ -79,10 +80,18 @@ public class FileReader extends Reader {
         while (!breakAndClose.get()) {
             try {
                 File file = new File(filename);
+
                 this.canonicalPath = file.toPath().toRealPath();
                 this.canonicalFilename = file.getCanonicalPath();
-                this.completedDirectoryPath = Paths.get(completedDirectoryName,filename + ".COMPLETED");
-                this.fileChannel = FileChannel.open(canonicalPath, READ, WRITE);
+
+                // TODO: handle name collisions /dir/foo/file1 /dir/bar/file1
+                this.completedDirectoryPath = Paths.get(completedDirectoryName,canonicalPath.getFileName() + ".COMPLETED");
+                this.fileChannel = FileChannel.open(completedDirectoryPath, READ, WRITE);
+
+                // Now that we have the lock, make sure the file still exists
+                if (!file.exists()) {
+                    throw new NoSuchFileException(String.format("File %s does not exist!",filename));
+                }
 
                 switch (format) {
                     case "csv":
@@ -114,7 +123,7 @@ public class FileReader extends Reader {
     private void purgeFile() {
         try {
             log.info("Purging ingested file {}", canonicalFilename);
-            Files.move(canonicalPath, completedDirectoryPath);
+            Files.move(canonicalPath, completedDirectoryPath, REPLACE_EXISTING);
         } catch (IOException e) {
             log.error("Error moving ingested file {}", canonicalFilename);
             log.error("IOException:", e);
@@ -209,6 +218,7 @@ public class FileReader extends Reader {
                 fileLock.close();
                 fileLock = null;
             }
+            fileChannel.close();
             streamParser.close();
         } catch (Exception ex) {
             log.error("Exception:", ex);

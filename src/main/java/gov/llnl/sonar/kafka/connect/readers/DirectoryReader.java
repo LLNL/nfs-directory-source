@@ -9,17 +9,21 @@ import org.apache.kafka.connect.source.SourceTaskContext;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.io.UncheckedIOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.nio.file.Files.walk;
+import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 
@@ -38,14 +42,7 @@ public class DirectoryReader extends Reader {
     private String offsetField;
     private String format;
 
-    private String uncheckedGetCanonicalPath(Path path) {
-        try {
-            return path.toRealPath().toString();
-        }
-        catch(IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
+    private FileReader currentFileReader;
 
     public DirectoryReader(String dirname,
                            String completedDirectoryName,
@@ -76,25 +73,52 @@ public class DirectoryReader extends Reader {
         }
     }
 
-    private FileReader getNextFileReader(Path p) {
-        try {
-            FileLock fileLock = FileChannel.open(p, READ, WRITE).tryLock();
-            if (fileLock != null && fileLock.isValid()) {
-                 return new FileReader(
-                         p.toRealPath().toString(),
-                         completedDirectoryName,
-                         topic,
-                         avroSchema,
-                         batchSize,
-                         partitionField,
-                         offsetField,
-                         format,
-                         fileLock);
+    private FileReader getNextFileReader(Iterator<Path> pathWalker) {
+
+        while(pathWalker.hasNext()) {
+            Path p = pathWalker.next();
+            try {
+                // Check the path
+                log.info("Checking path for {}", p.toString());
+                p = p.toRealPath();
+                String pathString = p.toString();
+
+                // Lock the output location
+                Path completedPath = Paths.get(completedDirectoryName,p.getFileName() + ".COMPLETED");
+
+                log.info("Getting lock for {}", completedPath.toString());
+                FileLock fileLock = FileChannel.open(completedPath, READ, WRITE, CREATE).tryLock();
+                log.info("Checking lock for {}", completedPath.toString());
+
+                if (fileLock != null && fileLock.isValid()) {
+
+                    log.info("Lock acquired for {}", pathString);
+
+                    // We may have gotten the lock AFTER the file was moved
+                    if (Files.notExists(p)) {
+                        fileLock.release();
+                        throw new NoSuchFileException(String.format("File %s does not exist!", pathString));
+                    }
+
+                    // Lock acquired and file exists!
+                    return new FileReader(
+                            pathString,
+                            completedDirectoryName,
+                            topic,
+                            avroSchema,
+                            batchSize,
+                            partitionField,
+                            offsetField,
+                            format,
+                            fileLock);
+                }
+            } catch (OverlappingFileLockException e) {
+                log.info("OverlappingFileLockException:", e);
+            } catch (NoSuchFileException e) {
+                log.info("NoSuchFileException:", e);
+            } catch (IOException e) {
+                log.error("IOException:", e);
             }
-        } catch (OverlappingFileLockException e) {
-            log.info("File {} was locked, exception:", p.toString());
-        } catch (IOException e) {
-            log.error("Exception:", e);
         }
         return null;
     }
@@ -103,37 +127,38 @@ public class DirectoryReader extends Reader {
     public Long read(List<SourceRecord> records, SourceTaskContext context) {
 
         Long numRecords = 0L;
+        Long filesRead = 0L;
 
         try {
 
             Iterator<Path> pathWalker = Files.walk(dirPath).filter(Files::isRegularFile).iterator();
 
-            while (true) {
+            while (filesRead < filesPerBatch) {
 
                 if (breakAndClose.get()) {
                     log.info("Reader interrupted, exiting reader loop");
                     throw new BreakException();
                 }
 
-                if (!pathWalker.hasNext()) {
-                    log.info("All files processed, exiting reader loop");
+                synchronized (this) {
+                    currentFileReader = getNextFileReader(pathWalker);
+                }
+
+                if (currentFileReader == null) {
+                    log.info("All files processed, exiting currentFileReader loop");
                     throw new BreakException();
                 }
 
-                final FileReader reader = getNextFileReader(pathWalker.next());
                 try {
 
-                    if (reader == null) {
-                        Thread.sleep(1000);
-                        continue;
-                    }
+                    log.info("Ingesting file {}", currentFileReader.getCanonicalFilename());
+                    Long numRecordsFile = currentFileReader.read(records, context);
+                    log.info("Read {} records from file {}", numRecordsFile, currentFileReader.getCanonicalFilename());
+                    currentFileReader.close();
 
-                    log.info("Ingesting file {}", reader.getCanonicalFilename());
-                    Long numRecordsFile = reader.read(records, context);
-                    log.info("Read {} records from file {}", numRecordsFile, reader.getCanonicalFilename());
-                    reader.close();
-
+                    filesRead += 1;
                     numRecords += numRecordsFile;
+
                 } catch (Exception e) {
                     log.error("Exception:", e);
                 }
@@ -155,6 +180,7 @@ public class DirectoryReader extends Reader {
     public void close() {
         log.info("Interrupting reader");
         breakAndClose.set(true);
+        currentFileReader.close();
         log.info("Closed");
     }
 
