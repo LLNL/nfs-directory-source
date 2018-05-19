@@ -16,9 +16,9 @@ import java.util.Map;
 public class DirectorySourceTask extends SourceTask {
 
     private static final String PARTITION_FIELD = "filename";
-    private static final String OFFSET_FIELD = "seek";
+    private static final String OFFSET_FIELD = "seekToLine";
 
-    private DirectoryReader reader;
+    private DirectoryReader reader = null;
 
     @Override
     public String version() {
@@ -90,7 +90,9 @@ public class DirectorySourceTask extends SourceTask {
         log.info("Task stopping");
         synchronized (this) {
             try {
-                reader.close();
+                if (reader != null) {
+                    reader.close();
+                }
             } catch (Exception ex) {
                 log.error("Exception:", ex);
             }

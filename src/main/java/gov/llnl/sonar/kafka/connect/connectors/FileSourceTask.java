@@ -17,7 +17,7 @@ import java.util.Map;
 @Slf4j
 public class FileSourceTask extends SourceTask {
     private static final String PARTITION_FIELD = "filename";
-    private static final String OFFSET_FIELD = "seek";
+    private static final String OFFSET_FIELD = "seekToLine";
 
     private FileReader reader;
 
@@ -48,7 +48,8 @@ public class FileSourceTask extends SourceTask {
                     config.getBatchSize(),
                     PARTITION_FIELD,
                     OFFSET_FIELD,
-                    config.getFormat());
+                    config.getFormat(),
+                    0L);
 
         } catch (Exception ex) {
             log.error("Exception:", ex);

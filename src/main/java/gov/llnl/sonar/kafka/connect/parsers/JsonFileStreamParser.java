@@ -1,6 +1,8 @@
 package gov.llnl.sonar.kafka.connect.parsers;
 
+import gov.llnl.sonar.kafka.connect.exceptions.ParseException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.avro.AvroTypeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.io.Decoder;
@@ -8,12 +10,10 @@ import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
 
 import java.io.*;
-import java.nio.channels.Channels;
 
 @Slf4j
 public class JsonFileStreamParser extends FileStreamParser {
 
-    private InputStream inputStream;
     private Decoder decoder;
     private SpecificDatumReader<GenericData.Record> datumReader;
     private GenericData.Record datum;
@@ -22,14 +22,14 @@ public class JsonFileStreamParser extends FileStreamParser {
                                 Schema avroSchema) {
         super(filename, avroSchema);
 
+        init();
         datumReader = new SpecificDatumReader<>(avroSchema);
     }
 
     @Override
     void init() {
         try {
-            inputStream = Channels.newInputStream(fileChannel);
-            decoder = DecoderFactory.get().jsonDecoder(avroSchema, inputStream);
+            decoder = DecoderFactory.get().jsonDecoder(avroSchema, fileInputStream);
         } catch (FileNotFoundException e) {
             log.error("FileNotFoundException:", e);
         } catch (IOException e) {
@@ -41,25 +41,21 @@ public class JsonFileStreamParser extends FileStreamParser {
     }
 
     @Override
-    public synchronized Object read() throws EOFException {
+    public synchronized Object read() throws ParseException, EOFException {
 
         try {
             datum = datumReader.read(datum, decoder);
+        } catch (AvroTypeException e) {
+            log.error("AvroTypeException", e);
+            throw new ParseException();
         } catch (EOFException e) {
             throw e;
         } catch (IOException e) {
-            log.error("Error parsing value {}", datumReader.getData().toString());
             log.error("IOException:", e);
-            return null;
+            throw new ParseException();
         }
 
         return avroConnectConverter.toConnectData(connectSchema, datum);
 
-    }
-
-    @Override
-    public synchronized void close() throws IOException {
-        super.close();
-        inputStream.close();
     }
 }

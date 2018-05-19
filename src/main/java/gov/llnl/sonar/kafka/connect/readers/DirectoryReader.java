@@ -7,10 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.io.UncheckedIOException;
+import java.io.*;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
@@ -44,6 +41,8 @@ public class DirectoryReader extends Reader {
 
     private FileReader currentFileReader;
 
+    Map<String, Long> currentOffsets = new HashMap<String, Long>();
+
     public DirectoryReader(String dirname,
                            String completedDirectoryName,
                            String topic,
@@ -66,7 +65,11 @@ public class DirectoryReader extends Reader {
         dirPath = dir.toPath();
         canonicalDirname = dir.getCanonicalPath();
 
-        Boolean isFolder = (Boolean) Files.getAttribute(dir.toPath(), "basic:isDirectory");
+        if (Files.notExists(dirPath)) {
+            throw new FileNotFoundException();
+        }
+
+        Boolean isFolder = (Boolean) Files.getAttribute(dirPath, "basic:isDirectory");
 
         if (!isFolder) {
             throw new IOException(canonicalDirname + " is not a directory!");
@@ -100,6 +103,12 @@ public class DirectoryReader extends Reader {
                         throw new NoSuchFileException(String.format("File %s does not exist!", pathString));
                     }
 
+                    // Check if we have an offset stored
+                    Long fileOffset = 0L;
+                    if (currentOffsets.containsKey(pathString)) {
+                        fileOffset = currentOffsets.get(pathString);
+                    }
+
                     // Lock acquired and file exists!
                     return new FileReader(
                             pathString,
@@ -110,6 +119,7 @@ public class DirectoryReader extends Reader {
                             partitionField,
                             offsetField,
                             format,
+                            fileOffset,
                             fileLock);
                 }
             } catch (OverlappingFileLockException e) {
@@ -153,6 +163,8 @@ public class DirectoryReader extends Reader {
                     Long numRecordsFile = currentFileReader.read(records, context);
                     log.info("Read {} records from file {}", numRecordsFile, currentFileReader.getCanonicalFilename());
                     currentFileReader.close();
+
+                    currentOffsets.put(currentFileReader.getFilename(), currentFileReader.getCurrentOffset());
 
                     filesRead += 1;
                     numRecords += numRecordsFile;

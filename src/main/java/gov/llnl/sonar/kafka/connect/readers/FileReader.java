@@ -2,6 +2,7 @@ package gov.llnl.sonar.kafka.connect.readers;
 
 import gov.llnl.sonar.kafka.connect.exceptions.FileLockedException;
 import gov.llnl.sonar.kafka.connect.exceptions.FilePurgedException;
+import gov.llnl.sonar.kafka.connect.exceptions.ParseException;
 import gov.llnl.sonar.kafka.connect.parsers.CsvFileStreamParser;
 import gov.llnl.sonar.kafka.connect.parsers.FileStreamParser;
 import gov.llnl.sonar.kafka.connect.parsers.JsonFileStreamParser;
@@ -30,6 +31,7 @@ import static java.nio.file.StandardOpenOption.WRITE;
 
 @Slf4j
 public class FileReader extends Reader {
+    private String filename;
     private String canonicalFilename;
     private Path canonicalPath;
     private Path completedDirectoryPath;
@@ -43,6 +45,8 @@ public class FileReader extends Reader {
 
     private FileStreamParser streamParser;
 
+    private Long currentOffset;
+
     public FileReader(String filename,
                       String completedDirectoryName,
                       String topic,
@@ -51,8 +55,9 @@ public class FileReader extends Reader {
                       String partitionField,
                       String offsetField,
                       String format,
+                      Long fileOffset,
                       FileLock fileLock) {
-        this(filename, completedDirectoryName, topic, avroSchema, batchSize, partitionField, offsetField, format);
+        this(filename, completedDirectoryName, topic, avroSchema, batchSize, partitionField, offsetField, format, fileOffset);
 
         // Replace filechannel with filelock's channel
         try {
@@ -71,12 +76,15 @@ public class FileReader extends Reader {
                       Long batchSize,
                       String partitionField,
                       String offsetField,
-                      String format) {
+                      String format,
+                      Long fileOffset) {
 
+        this.filename = filename;
         this.topic = topic;
         this.batchSize = batchSize;
         this.partitionField = partitionField;
         this.offsetField = offsetField;
+        this.currentOffset = fileOffset;
 
         while (!breakAndClose.get()) {
             try {
@@ -142,7 +150,10 @@ public class FileReader extends Reader {
     @Override
     public synchronized Long read(List<SourceRecord> records, SourceTaskContext context)
             throws FileLockedException, FilePurgedException {
-        Long i, offset = ConnectUtil.getStreamOffset(context, partitionField, offsetField, canonicalFilename);
+        Long i;
+        if (currentOffset == 0L) {
+            currentOffset = ConnectUtil.getStreamOffset(context, partitionField, offsetField, canonicalFilename);
+        }
 
         // Try to acquire file lock
         if (fileLock == null) {
@@ -162,7 +173,8 @@ public class FileReader extends Reader {
 
         // Skip to offset
         try {
-            streamParser.seek(offset);
+            log.info("Reading from file {} line {}", canonicalFilename, currentOffset);
+            streamParser.seekToLine(currentOffset);
         } catch (EOFException e) {
             purgeFile();
             return safeReturn(0L);
@@ -180,26 +192,36 @@ public class FileReader extends Reader {
                 if (parsedValue != null) {
 
                     Map sourcePartition = Collections.singletonMap(partitionField, canonicalFilename);
-                    Map sourceOffset = Collections.singletonMap(offsetField, offset);
+                    Map sourceOffset = Collections.singletonMap(offsetField, currentOffset);
 
                     records.add(new SourceRecord(sourcePartition, sourceOffset, topic, streamParser.connectSchema, parsedValue));
 
+                    currentOffset++;
                 }
 
-                offset = streamParser.position();
-
+            } catch (ParseException e) {
+                log.error("Record parse failed, closing reader");
+                close();
             } catch (EOFException e) {
                 purgeFile();
-            } catch (IOException e) {
-                log.error("IOException:", e);
+            } catch (Exception e) {
+                log.error("Exception:", e);
             }
 
         }
         return safeReturn(i);
     }
 
+    String getFilename() {
+        return filename;
+    }
+
     String getCanonicalFilename() {
         return canonicalFilename;
+    }
+
+    public Long getCurrentOffset() {
+        return currentOffset;
     }
 
     @Override
