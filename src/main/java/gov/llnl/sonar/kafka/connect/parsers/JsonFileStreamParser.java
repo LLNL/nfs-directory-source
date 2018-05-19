@@ -8,41 +8,48 @@ import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
 
 import java.io.*;
+import java.nio.channels.Channels;
 
 @Slf4j
 public class JsonFileStreamParser extends FileStreamParser {
 
-    private FileInputStream fileStream;
-
+    private InputStream inputStream;
     private Decoder decoder;
     private SpecificDatumReader<GenericData.Record> datumReader;
     private GenericData.Record datum;
 
     public JsonFileStreamParser(String filename,
                                 Schema avroSchema) {
+        super(filename, avroSchema);
 
-        super(avroSchema);
-
-        try {
-            this.fileStream = new FileInputStream(new File(filename));
-            decoder = DecoderFactory.get().jsonDecoder(avroSchema, fileStream);
-            datumReader = new SpecificDatumReader<>(avroSchema);
-        } catch (FileNotFoundException ex) {
-            log.error("File {} not found", filename, ex);
-        } catch (Exception ex) {
-            log.error("Exception:", ex);
-        }
+        datumReader = new SpecificDatumReader<>(avroSchema);
     }
 
     @Override
-    public Object read() throws EOFException {
+    void init() {
+        try {
+            inputStream = Channels.newInputStream(fileChannel);
+            decoder = DecoderFactory.get().jsonDecoder(avroSchema, inputStream);
+        } catch (FileNotFoundException e) {
+            log.error("FileNotFoundException:", e);
+        } catch (IOException e) {
+            log.error("IOException:", e);
+        } catch (Exception e) {
+            log.error("Exception:", e);
+        }
+
+    }
+
+    @Override
+    public synchronized Object read() throws EOFException {
 
         try {
             datum = datumReader.read(datum, decoder);
         } catch (EOFException e) {
             throw e;
         } catch (IOException e) {
-            log.error("Error parsing value {}: ", datumReader.getData().toString());
+            log.error("Error parsing value {}", datumReader.getData().toString());
+            log.error("IOException:", e);
             return null;
         }
 
@@ -51,21 +58,8 @@ public class JsonFileStreamParser extends FileStreamParser {
     }
 
     @Override
-    public void skip(Long numRecords) throws EOFException {
-        for (Long i = 0L; i < numRecords; i++) {
-            try {
-                datumReader.read(datum, decoder);
-            } catch (EOFException e) {
-                throw e;
-            } catch (IOException e) {
-                // Ignore parse errors and skip
-                continue;
-            }
-        }
-    }
-
-    @Override
-    public void close() throws IOException {
-        fileStream.close();
+    public synchronized void close() throws IOException {
+        super.close();
+        inputStream.close();
     }
 }

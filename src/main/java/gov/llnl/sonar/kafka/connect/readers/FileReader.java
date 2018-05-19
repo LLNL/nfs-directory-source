@@ -162,7 +162,7 @@ public class FileReader extends Reader {
 
         // Skip to offset
         try {
-            streamParser.skip(offset);
+            streamParser.seek(offset);
         } catch (EOFException e) {
             purgeFile();
             return safeReturn(0L);
@@ -183,12 +183,15 @@ public class FileReader extends Reader {
                     Map sourceOffset = Collections.singletonMap(offsetField, offset);
 
                     records.add(new SourceRecord(sourcePartition, sourceOffset, topic, streamParser.connectSchema, parsedValue));
-                    offset++;
 
                 }
 
+                offset = streamParser.position();
+
             } catch (EOFException e) {
                 purgeFile();
+            } catch (IOException e) {
+                log.error("IOException:", e);
             }
 
         }

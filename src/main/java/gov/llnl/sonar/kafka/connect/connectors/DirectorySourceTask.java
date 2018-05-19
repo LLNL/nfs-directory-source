@@ -16,7 +16,7 @@ import java.util.Map;
 public class DirectorySourceTask extends SourceTask {
 
     private static final String PARTITION_FIELD = "filename";
-    private static final String OFFSET_FIELD = "position";
+    private static final String OFFSET_FIELD = "seek";
 
     private DirectoryReader reader;
 

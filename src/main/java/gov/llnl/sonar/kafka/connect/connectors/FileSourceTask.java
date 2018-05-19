@@ -17,7 +17,7 @@ import java.util.Map;
 @Slf4j
 public class FileSourceTask extends SourceTask {
     private static final String PARTITION_FIELD = "filename";
-    private static final String OFFSET_FIELD = "position";
+    private static final String OFFSET_FIELD = "seek";
 
     private FileReader reader;
 

@@ -4,45 +4,45 @@ import gov.llnl.sonar.kafka.connect.converters.CsvRecordConverter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.kafka.connect.errors.DataException;
 
 import java.io.*;
+import java.nio.channels.Channels;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.NoSuchElementException;
 
 @Slf4j
 public class CsvFileStreamParser extends FileStreamParser {
 
-    private String filename;
     private Reader fileReader;
+    private CSVParser csvParser;
     private Iterator<CSVRecord> csvRecordIterator;
-
     private CsvRecordConverter csvRecordConverter;
 
     public CsvFileStreamParser(String filename,
                                Schema avroSchema) {
 
         // TODO: pass in CSV format options here
-        super(avroSchema);
+        super(filename, avroSchema);
 
-        this.filename = filename;
-
-        try {
-            fileReader = new FileReader(filename);
-            csvRecordIterator = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(fileReader).iterator();
-            csvRecordConverter = new CsvRecordConverter(connectSchema);
-        } catch (FileNotFoundException ex) {
-            log.error("File {} not found", filename, ex);
-        } catch (IOException e) {
-            log.error("IOException:", e);
-        }
-
+        csvRecordConverter = new CsvRecordConverter(connectSchema);
     }
 
     @Override
-    public Object read() throws EOFException {
+    void init() {
+        try {
+            fileReader = new InputStreamReader(Channels.newInputStream(fileChannel));
+            csvParser = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(fileReader);
+            csvRecordIterator = csvParser.iterator();
+        } catch (IOException e) {
+            log.error("IOException:", e);
+        }
+    }
+
+    @Override
+    public synchronized Object read() throws EOFException {
 
         final CSVRecord csvRecord;
         try {
@@ -65,18 +65,8 @@ public class CsvFileStreamParser extends FileStreamParser {
     }
 
     @Override
-    public void skip(Long numRecords) throws EOFException {
-        for(Long i = 0L; i < numRecords; i++) {
-            try {
-                csvRecordIterator.next();
-            } catch (NoSuchElementException e) {
-                throw new EOFException();
-            }
-        }
-    }
-
-    @Override
-    public void close() throws IOException {
+    public synchronized void close() throws IOException {
+        super.close();
         fileReader.close();
     }
 }
