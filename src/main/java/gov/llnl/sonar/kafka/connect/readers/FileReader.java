@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -106,16 +107,10 @@ public class FileReader extends Reader {
 
                 break;
 
-            } catch (NoSuchFileException ex) {
-                try {
-                    synchronized (this) {
-                        this.wait(1000);
-                    }
-                } catch (InterruptedException ex1) {
-                    log.error("Who dares to disturb my slumber?");
-                }
-            } catch (Exception ex) {
-                log.error("Exception:", ex);
+            } catch (NoSuchFileException e) {
+                log.error("NoSuchFileException:", e);
+            } catch (Exception e) {
+                log.error("Exception:", e);
             }
         }
     }
@@ -131,15 +126,7 @@ public class FileReader extends Reader {
         close();
     }
 
-    private Long safeReturn(Long val, int sleepMillis) {
-        try {
-            synchronized (this) {
-                wait(sleepMillis);
-            }
-        } catch (InterruptedException e) {
-            log.warn("Sleep interrupted");
-        }
-
+    private Long safeReturn(Long val) {
         if (fileLock != null) {
             try {
                 fileLock.close();
@@ -153,7 +140,7 @@ public class FileReader extends Reader {
     }
 
     @Override
-    public Long read(List<SourceRecord> records, SourceTaskContext context)
+    public synchronized Long read(List<SourceRecord> records, SourceTaskContext context)
             throws FileLockedException, FilePurgedException {
         Long i, offset = ConnectUtil.getStreamOffset(context, partitionField, offsetField, canonicalFilename);
 
@@ -163,11 +150,13 @@ public class FileReader extends Reader {
                 fileLock = fileChannel.tryLock();
                 if (fileLock == null) {
                     log.info("File {} locked, waiting for a second before trying again...", canonicalFilename);
-                    return safeReturn(0L, 1000);
+                    return safeReturn(0L);
                 }
+            } catch (OverlappingFileLockException e) {
+                return safeReturn(0L);
             } catch (IOException e) {
                 log.error("IOException:", e);
-                return safeReturn(0L, 1000);
+                return safeReturn(0L);
             }
         }
 
@@ -176,7 +165,7 @@ public class FileReader extends Reader {
             streamParser.skip(offset);
         } catch (EOFException e) {
             purgeFile();
-            return safeReturn(0L, 1000);
+            return safeReturn(0L);
         }
 
         // Do the read
@@ -203,7 +192,7 @@ public class FileReader extends Reader {
             }
 
         }
-        return safeReturn(i, 1);
+        return safeReturn(i);
     }
 
     String getCanonicalFilename() {
@@ -211,7 +200,7 @@ public class FileReader extends Reader {
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
         super.close();
         try {
             if (fileLock != null) {

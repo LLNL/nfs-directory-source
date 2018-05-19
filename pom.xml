@@ -66,10 +66,11 @@
             <version>2.5</version>
         </dependency>
         <dependency>
-            <groupId>net.sf.supercsv</groupId>
-            <artifactId>super-csv</artifactId>
-            <version>2.4.0</version>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.5</version>
         </dependency>
+
 
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -122,6 +123,7 @@
                     <target>1.8</target>
                 </configuration>
             </plugin>
+            <!--
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -141,6 +143,7 @@
                     </execution>
                 </executions>
             </plugin>
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -153,7 +156,6 @@
                     </archive>
                 </configuration>
             </plugin>
-            <!--
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>2.5.3</version>
@@ -173,7 +175,6 @@
                     </execution>
                 </executions>
             </plugin>
-            -->
         </plugins>
         <resources>
             <resource>

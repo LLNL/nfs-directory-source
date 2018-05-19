@@ -59,8 +59,6 @@ public class CsvRecordConverter extends Converter<Map<String, String>>{
             record = record.put(key, parsedValue);
         }
 
-        log.info("Parsed record: {}", record.toString());
-
         return record;
     }
 }

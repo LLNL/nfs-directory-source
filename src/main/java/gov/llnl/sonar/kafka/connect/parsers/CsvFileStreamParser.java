@@ -3,23 +3,23 @@ package gov.llnl.sonar.kafka.connect.parsers;
 import gov.llnl.sonar.kafka.connect.converters.CsvRecordConverter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.kafka.connect.errors.DataException;
-import org.supercsv.exception.SuperCsvException;
-import org.supercsv.io.CsvMapReader;
-import org.supercsv.prefs.CsvPreference;
 
 import java.io.*;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @Slf4j
 public class CsvFileStreamParser extends FileStreamParser {
 
     private String filename;
     private Reader fileReader;
-    private CsvMapReader reader;
+    private Iterator<CSVRecord> csvRecordIterator;
 
     private CsvRecordConverter csvRecordConverter;
-    private String[] header;
 
     public CsvFileStreamParser(String filename,
                                Schema avroSchema) {
@@ -31,10 +31,7 @@ public class CsvFileStreamParser extends FileStreamParser {
 
         try {
             fileReader = new FileReader(filename);
-            reader = new CsvMapReader(fileReader, CsvPreference.STANDARD_PREFERENCE);
-
-            header = reader.getHeader(true);
-
+            csvRecordIterator = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(fileReader).iterator();
             csvRecordConverter = new CsvRecordConverter(connectSchema);
         } catch (FileNotFoundException ex) {
             log.error("File {} not found", filename, ex);
@@ -47,26 +44,21 @@ public class CsvFileStreamParser extends FileStreamParser {
     @Override
     public Object read() throws EOFException {
 
+        final CSVRecord csvRecord;
         try {
-            log.debug("Reading next csv record...");
-            Map<String, String> csvRecord = reader.read(header);
-            if (csvRecord == null)
-                throw new EOFException();
+            csvRecord = csvRecordIterator.next();
+        } catch (NoSuchElementException e) {
+            throw new EOFException();
+        }
 
-            try {
-                log.debug("Building connect record for csv record {}", csvRecord.toString());
-                return csvRecordConverter.convert(csvRecord);
-
-            } catch (DataException ex) {
-                log.error("Failed to convert csv record {}, from file {}", csvRecord.toString(), filename, ex);
-            }
-        } catch (SuperCsvException e) {
-            log.error("Failed to parse CSV file {} at line {}", filename, reader.getLineNumber());
-            log.error("SuperCsvException:", e);
-        } catch (EOFException e) {
-            throw e;
-        } catch (IOException e) {
-            log.error("IOException:", e);
+        try {
+            return csvRecordConverter.convert(csvRecord.toMap());
+        } catch (DataException e) {
+            log.error("Error parsing {}", csvRecord.toMap());
+            log.error("DataException:", e);
+        } catch (NumberFormatException e) {
+            log.error("Error parsing {}", csvRecord.toMap());
+            log.error("NumberFormatException:", e);
         }
 
         return null;
@@ -76,11 +68,9 @@ public class CsvFileStreamParser extends FileStreamParser {
     public void skip(Long numRecords) throws EOFException {
         for(Long i = 0L; i < numRecords; i++) {
             try {
-                Map<String, String> csvRecord = reader.read(header);
-                if (csvRecord == null)
-                    throw new EOFException();
-            } catch (IOException e) {
-                log.error("IOException:", e);
+                csvRecordIterator.next();
+            } catch (NoSuchElementException e) {
+                throw new EOFException();
             }
         }
     }

@@ -96,7 +96,7 @@ public class DirectoryReader extends Reader {
 
                     // We may have gotten the lock AFTER the file was moved
                     if (Files.notExists(p)) {
-                        fileLock.release();
+                        fileLock.close();
                         throw new NoSuchFileException(String.format("File %s does not exist!", pathString));
                     }
 
@@ -124,7 +124,7 @@ public class DirectoryReader extends Reader {
     }
 
     @Override
-    public Long read(List<SourceRecord> records, SourceTaskContext context) {
+    public synchronized Long read(List<SourceRecord> records, SourceTaskContext context) {
 
         Long numRecords = 0L;
         Long filesRead = 0L;
@@ -140,9 +140,7 @@ public class DirectoryReader extends Reader {
                     throw new BreakException();
                 }
 
-                synchronized (this) {
-                    currentFileReader = getNextFileReader(pathWalker);
-                }
+                currentFileReader = getNextFileReader(pathWalker);
 
                 if (currentFileReader == null) {
                     log.info("All files processed, exiting currentFileReader loop");
@@ -177,10 +175,12 @@ public class DirectoryReader extends Reader {
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
         log.info("Interrupting reader");
         breakAndClose.set(true);
-        currentFileReader.close();
+        if (currentFileReader != null) {
+            currentFileReader.close();
+        }
         log.info("Closed");
     }
 

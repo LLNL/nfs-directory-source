@@ -42,6 +42,7 @@ public class FileSourceTask extends SourceTask {
 
             reader = new FileReader(
                     relativeFilename,
+                    config.getCompletedDirname(),
                     config.getTopic(),
                     avroSchema,
                     config.getBatchSize(),

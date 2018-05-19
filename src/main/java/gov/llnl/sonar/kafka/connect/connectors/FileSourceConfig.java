@@ -18,7 +18,9 @@ public class FileSourceConfig extends AbstractConfig {
     }
 
     public static final String FILENAME = "filename";
-    public static final String FILENAME_DOC = "The name of the file to read from.";
+    public static final String FILENAME_DOC = "The file to read from.";
+    public static final String COMPLETED_DIRNAME = "completed.dirname";
+    public static final String COMPLETED_DIRNAME_DOC = "The directory to move ingested files into";
     public static final String TOPIC = "topic";
     public static final String TOPIC_DOC = "The name of the topic to stream to.";
     public static final String FORMAT = "format";
@@ -46,6 +48,7 @@ public class FileSourceConfig extends AbstractConfig {
     public static ConfigDef conf() {
         return new ConfigDef()
                 .define(FILENAME, Type.STRING, Importance.HIGH, FILENAME_DOC)
+                .define(COMPLETED_DIRNAME, Type.STRING, Importance.HIGH, COMPLETED_DIRNAME_DOC)
                 .define(TOPIC, Type.STRING, Importance.HIGH, TOPIC_DOC)
                 .define(FORMAT, Type.STRING, Importance.HIGH, FORMAT_DOC)
                 .define(FORMAT_OPTIONS, Type.STRING, "", Importance.LOW, FORMAT_OPTIONS_DOC)
@@ -56,6 +59,7 @@ public class FileSourceConfig extends AbstractConfig {
     }
 
     public String getFilename() { return this.getString(FILENAME); }
+    public String getCompletedDirname() { return this.getString(COMPLETED_DIRNAME); }
     public String getFormat() { return this.getString(FORMAT); }
     public String getFormatOptions() { return this.getString(FORMAT_OPTIONS); }
     public String getTopic() { return this.getString(TOPIC); }
