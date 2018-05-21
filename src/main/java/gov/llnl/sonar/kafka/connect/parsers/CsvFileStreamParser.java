@@ -11,26 +11,50 @@ import org.apache.kafka.connect.errors.DataException;
 
 import java.io.*;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 @Slf4j
 public class CsvFileStreamParser extends FileStreamParser {
 
-    //private Map<String, String> csvOptions;
     private CSVFormat csvFormat;
     private CSVParser csvParser;
     private Iterator<CSVRecord> csvRecordIterator;
     private CsvRecordConverter csvRecordConverter;
 
-    //private Boolean withHeader = false;
+    private CSVFormat csvFormatFromOptions(Map<String, String> formatOptions) {
+        CSVFormat csvFormat = CSVFormat.DEFAULT;
+        for (Map.Entry<String, String> option : formatOptions.entrySet()) {
+            switch (option.getKey()) {
+                case ("withHeader"):
+                    Boolean withHeader = Boolean.valueOf(option.getValue());
+                    if (withHeader) {
+                        csvFormat = csvFormat.withFirstRecordAsHeader();
+                    }
+                    break;
+                case ("columns"):
+                    String[] columns = option.getValue().split(",");
+                    csvFormat = csvFormat.withHeader(columns);
+                    break;
+                case ("delimiter"):
+                    char delimiter = option.getValue().charAt(0);
+                    csvFormat = csvFormat.withDelimiter(delimiter);
+                    break;
+                case ("quoteChar"):
+                    char quoteChar = option.getValue().charAt(0);
+                    csvFormat = csvFormat.withQuote(quoteChar);
+                    break;
+            }
+        }
+        return csvFormat;
+    }
 
     public CsvFileStreamParser(String filename,
-                               Schema avroSchema) {
-                               //Map<String, String> csvOptions) {
-
+                               Schema avroSchema,
+                               Map<String, String> formatOptions) {
         super(filename, avroSchema);
 
-        //this.csvOptions = csvOptions;
+        this.csvFormat = csvFormatFromOptions(formatOptions);
         init();
         csvRecordConverter = new CsvRecordConverter(connectSchema);
     }
@@ -38,16 +62,6 @@ public class CsvFileStreamParser extends FileStreamParser {
     @Override
     void init() {
         try {
-            csvFormat = CSVFormat.DEFAULT.withFirstRecordAsHeader();
-
-            /*new CSVFormat(
-                    delimiter, quoteChar, quoteMode,
-                    commentStart, escape, ignoreSurroundingSpaces,
-                    ignoreEmptyLines, recordSeparator, nullString,
-                    headerComments, header, skipHeaderRecord,
-                    allowMissingColumnNames, ignoreHeaderCase, trim,
-                    trailingDelimiter);
-                    */
             csvParser = csvFormat.parse(inputStreamReader);
             csvRecordIterator = csvParser.iterator();
         } catch (IOException e) {

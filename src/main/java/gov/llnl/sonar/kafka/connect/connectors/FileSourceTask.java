@@ -3,6 +3,7 @@ package gov.llnl.sonar.kafka.connect.connectors;
 import gov.llnl.sonar.kafka.connect.exceptions.FilePurgedException;
 import gov.llnl.sonar.kafka.connect.readers.FileReader;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
+import gov.llnl.sonar.kafka.connect.util.OptionsParser;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
@@ -12,12 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-// TODO: multiple tasks, thread safety
-
 @Slf4j
 public class FileSourceTask extends SourceTask {
     private static final String PARTITION_FIELD = "filename";
-    private static final String OFFSET_FIELD = "seekToLine";
+    private static final String OFFSET_FIELD = "line";
 
     private FileReader reader;
 
@@ -49,6 +48,7 @@ public class FileSourceTask extends SourceTask {
                     PARTITION_FIELD,
                     OFFSET_FIELD,
                     config.getFormat(),
+                    OptionsParser.optionsStringToMap(config.getFormat()),
                     0L);
 
         } catch (Exception ex) {

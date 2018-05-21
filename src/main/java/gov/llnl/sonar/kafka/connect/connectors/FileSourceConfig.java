@@ -51,7 +51,7 @@ public class FileSourceConfig extends AbstractConfig {
                 .define(COMPLETED_DIRNAME, Type.STRING, Importance.HIGH, COMPLETED_DIRNAME_DOC)
                 .define(TOPIC, Type.STRING, Importance.HIGH, TOPIC_DOC)
                 .define(FORMAT, Type.STRING, Importance.HIGH, FORMAT_DOC)
-                .define(FORMAT_OPTIONS, Type.STRING, "", Importance.LOW, FORMAT_OPTIONS_DOC)
+                .define(FORMAT_OPTIONS, Type.STRING, "{}", Importance.LOW, FORMAT_OPTIONS_DOC)
                 .define(AVRO_SCHEMA, Type.STRING, "", Importance.HIGH, AVRO_SCHEMA_DOC)
                 .define(AVRO_SCHEMA_FILENAME, Type.STRING, "", Importance.HIGH, AVRO_SCHEMA_FILENAME_DOC)
                 .define(BATCH_SIZE, Type.LONG, 1000L, Importance.HIGH, BATCH_SIZE_DOC)

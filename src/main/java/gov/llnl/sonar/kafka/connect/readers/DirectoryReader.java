@@ -38,6 +38,7 @@ public class DirectoryReader extends Reader {
     private String partitionField;
     private String offsetField;
     private String format;
+    Map<String, String> formatOptions;
 
     private FileReader currentFileReader;
 
@@ -50,7 +51,8 @@ public class DirectoryReader extends Reader {
                            Long batchSize,
                            String partitionField,
                            String offsetField,
-                           String format)
+                           String format,
+                           Map<String, String> formatOptions)
         throws IOException {
 
         this.completedDirectoryName = completedDirectoryName;
@@ -60,6 +62,7 @@ public class DirectoryReader extends Reader {
         this.partitionField = partitionField;
         this.offsetField = offsetField;
         this.format = format;
+        this.formatOptions = formatOptions;
 
         File dir = new File(dirname);
         dirPath = dir.toPath();
@@ -119,6 +122,7 @@ public class DirectoryReader extends Reader {
                             partitionField,
                             offsetField,
                             format,
+                            formatOptions,
                             fileOffset,
                             fileLock);
                 }

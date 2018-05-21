@@ -2,6 +2,7 @@ package gov.llnl.sonar.kafka.connect.connectors;
 
 import gov.llnl.sonar.kafka.connect.readers.DirectoryReader;
 import gov.llnl.sonar.kafka.connect.readers.FileReader;
+import gov.llnl.sonar.kafka.connect.util.OptionsParser;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -16,7 +17,7 @@ import java.util.Map;
 public class DirectorySourceTask extends SourceTask {
 
     private static final String PARTITION_FIELD = "filename";
-    private static final String OFFSET_FIELD = "seekToLine";
+    private static final String OFFSET_FIELD = "line";
 
     private DirectoryReader reader = null;
 
@@ -47,7 +48,8 @@ public class DirectorySourceTask extends SourceTask {
                     config.getBatchSize(),
                     PARTITION_FIELD,
                     OFFSET_FIELD,
-                    config.getFormat());
+                    config.getFormat(),
+                    OptionsParser.optionsStringToMap(config.getFormatOptions()));
 
             log.info("Added directory {}", reader.getCanonicalDirname());
 

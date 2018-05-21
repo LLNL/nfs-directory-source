@@ -55,9 +55,11 @@ public class FileReader extends Reader {
                       String partitionField,
                       String offsetField,
                       String format,
+                      Map<String, String> formatOptions,
                       Long fileOffset,
                       FileLock fileLock) {
-        this(filename, completedDirectoryName, topic, avroSchema, batchSize, partitionField, offsetField, format, fileOffset);
+        this(filename, completedDirectoryName, topic, avroSchema,
+                batchSize, partitionField, offsetField, format, formatOptions, fileOffset);
 
         // Replace filechannel with filelock's channel
         try {
@@ -77,6 +79,7 @@ public class FileReader extends Reader {
                       String partitionField,
                       String offsetField,
                       String format,
+                      Map<String, String> formatOptions,
                       Long fileOffset) {
 
         this.filename = filename;
@@ -104,7 +107,7 @@ public class FileReader extends Reader {
 
                 switch (format) {
                     case "csv":
-                        this.streamParser = new CsvFileStreamParser(canonicalFilename, avroSchema);
+                        this.streamParser = new CsvFileStreamParser(canonicalFilename, avroSchema, formatOptions);
                         break;
                     case "json":
                         this.streamParser = new JsonFileStreamParser(canonicalFilename, avroSchema);
