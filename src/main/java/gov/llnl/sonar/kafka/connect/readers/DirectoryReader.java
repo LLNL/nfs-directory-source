@@ -16,13 +16,8 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
 
-import static java.nio.file.Files.walk;
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.READ;
-import static java.nio.file.StandardOpenOption.WRITE;
+import static java.nio.file.StandardOpenOption.*;
 
 @Slf4j
 public class DirectoryReader extends Reader {
@@ -79,60 +74,111 @@ public class DirectoryReader extends Reader {
         }
     }
 
+    private FileReader lockedGetNextFileReader(Iterator<Path> pathWalker) {
+
+        FileReader result = null;
+        int numRetries = 100;
+
+        // Get a process-wide lock for this function
+        Path pathWalkLockFile = Paths.get(completedDirectoryName, ".directory-walker-lock");
+        FileLock pathWalkLock = null;
+        while (numRetries >= 0) {
+            try {
+                pathWalkLock = FileChannel.open(pathWalkLockFile, READ, WRITE, CREATE, SYNC).tryLock();
+                break;
+            } catch (OverlappingFileLockException e) {
+                try {
+                    numRetries--;
+                    this.wait(100);
+                } catch (InterruptedException e1) {
+                    return null;
+                }
+            } catch(IOException e) {
+                log.error("IOException:", e);
+                return null;
+            }
+        }
+
+        if (pathWalkLock == null) {
+            return null;
+        }
+
+        log.info("PathWalker lock acquired");
+
+        result = getNextFileReader(pathWalker);
+
+        try {
+            pathWalkLock.release();
+            log.info("PathWalker lock released");
+        } catch (IOException e) {
+            log.error("IOException:", e);
+        }
+
+        return result;
+    }
+
     private FileReader getNextFileReader(Iterator<Path> pathWalker) {
 
-        while(pathWalker.hasNext()) {
-            Path p = pathWalker.next();
-            try {
-                // Check the path
-                log.info("Checking path for {}", p.toString());
-                p = p.toRealPath();
-                String pathString = p.toString();
+        FileLock fileLock = null;
+        try {
+            while (pathWalker.hasNext()) {
+                Path p = pathWalker.next();
 
-                // Lock the output location
-                Path completedPath = Paths.get(completedDirectoryName,p.getFileName() + ".COMPLETED");
+                try {
+                    // Check the path
+                    log.info("Checking path for {}", p.toString());
+                    p = p.toRealPath();
+                    String pathString = p.toString();
 
-                log.info("Getting lock for {}", completedPath.toString());
-                FileLock fileLock = FileChannel.open(completedPath, READ, WRITE, CREATE).tryLock();
-                log.info("Checking lock for {}", completedPath.toString());
+                    // Lock the output location
+                    Path completedPath = Paths.get(completedDirectoryName, p.getFileName() + ".COMPLETED");
 
-                if (fileLock != null && fileLock.isValid()) {
+                    log.info("Getting lock for {}", completedPath.toString());
+                    fileLock = FileChannel.open(completedPath, READ, WRITE, CREATE, SYNC).tryLock();
+                    log.info("Checking lock for {}", completedPath.toString());
 
-                    log.info("Lock acquired for {}", pathString);
+                    if (fileLock != null && fileLock.isValid()) {
 
-                    // We may have gotten the lock AFTER the file was moved
-                    if (Files.notExists(p)) {
-                        fileLock.close();
-                        throw new NoSuchFileException(String.format("File %s does not exist!", pathString));
+                        log.info("Acquired lock for file {}", pathString);
+
+                        // We may have gotten the lock AFTER the file was moved
+                        if (Files.notExists(p)) {
+                            fileLock.release();
+                            log.info("File doesn't exist! Released lock for file {}", pathString);
+                            throw new NoSuchFileException(String.format("File %s does not exist!", pathString));
+                        }
+
+                        // Check if we have an offset stored
+                        Long fileOffset = 0L;
+                        if (currentOffsets.containsKey(pathString)) {
+                            fileOffset = currentOffsets.get(pathString);
+                        }
+
+                        // Lock acquired and file exists!
+                        return new FileReader(
+                                pathString,
+                                completedDirectoryName,
+                                topic,
+                                avroSchema,
+                                batchSize,
+                                partitionField,
+                                offsetField,
+                                format,
+                                formatOptions,
+                                fileOffset,
+                                fileLock.channel(),
+                                fileLock);
                     }
-
-                    // Check if we have an offset stored
-                    Long fileOffset = 0L;
-                    if (currentOffsets.containsKey(pathString)) {
-                        fileOffset = currentOffsets.get(pathString);
-                    }
-
-                    // Lock acquired and file exists!
-                    return new FileReader(
-                            pathString,
-                            completedDirectoryName,
-                            topic,
-                            avroSchema,
-                            batchSize,
-                            partitionField,
-                            offsetField,
-                            format,
-                            formatOptions,
-                            fileOffset,
-                            fileLock);
+                } catch (OverlappingFileLockException e) {
+                    log.info("File {} locked, continuing...", p.toString());
+                } catch (NoSuchFileException e) {
+                    log.info("NoSuchFileException:", e);
+                } catch (IOException e) {
+                    log.info("Probably a stale file handle, resetting...");
                 }
-            } catch (OverlappingFileLockException e) {
-                log.info("OverlappingFileLockException:", e);
-            } catch (NoSuchFileException e) {
-                log.info("NoSuchFileException:", e);
-            } catch (IOException e) {
-                log.error("IOException:", e);
             }
+        } catch (UncheckedIOException e) {
+            log.info("PathWalker stale, resetting...");
         }
         return null;
     }
@@ -154,7 +200,7 @@ public class DirectoryReader extends Reader {
                     throw new BreakException();
                 }
 
-                currentFileReader = getNextFileReader(pathWalker);
+                currentFileReader = lockedGetNextFileReader(pathWalker);
 
                 if (currentFileReader == null) {
                     log.info("All files processed, exiting currentFileReader loop");
@@ -194,6 +240,7 @@ public class DirectoryReader extends Reader {
     public synchronized void close() {
         log.info("Interrupting reader");
         breakAndClose.set(true);
+        notifyAll();
         if (currentFileReader != null) {
             currentFileReader.close();
         }

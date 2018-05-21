@@ -27,6 +27,7 @@ import java.util.Map;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.READ;
+import static java.nio.file.StandardOpenOption.SYNC;
 import static java.nio.file.StandardOpenOption.WRITE;
 
 @Slf4j
@@ -57,30 +58,8 @@ public class FileReader extends Reader {
                       String format,
                       Map<String, String> formatOptions,
                       Long fileOffset,
+                      FileChannel fileChannel,
                       FileLock fileLock) {
-        this(filename, completedDirectoryName, topic, avroSchema,
-                batchSize, partitionField, offsetField, format, formatOptions, fileOffset);
-
-        // Replace filechannel with filelock's channel
-        try {
-            this.fileChannel.close();
-        } catch (IOException e) {
-        }
-        this.fileChannel = fileLock.channel();
-        this.fileLock = fileLock;
-
-    }
-
-    public FileReader(String filename,
-                      String completedDirectoryName,
-                      String topic,
-                      org.apache.avro.Schema avroSchema,
-                      Long batchSize,
-                      String partitionField,
-                      String offsetField,
-                      String format,
-                      Map<String, String> formatOptions,
-                      Long fileOffset) {
 
         this.filename = filename;
         this.topic = topic;
@@ -98,7 +77,20 @@ public class FileReader extends Reader {
 
                 // TODO: handle name collisions /dir/foo/file1 /dir/bar/file1
                 this.completedDirectoryPath = Paths.get(completedDirectoryName,canonicalPath.getFileName() + ".COMPLETED");
-                this.fileChannel = FileChannel.open(completedDirectoryPath, READ, WRITE);
+
+                // Get file channel if not exists
+                if (fileChannel == null) {
+                    this.fileChannel = FileChannel.open(completedDirectoryPath, READ, WRITE, SYNC);
+                } else {
+                    this.fileChannel = fileChannel;
+                }
+
+                // Get file lock if not exists
+                if (fileLock == null) {
+                    this.fileLock = this.fileChannel.tryLock();
+                } else {
+                    this.fileLock = fileLock;
+                }
 
                 // Now that we have the lock, make sure the file still exists
                 if (!file.exists()) {
@@ -140,10 +132,11 @@ public class FileReader extends Reader {
     private Long safeReturn(Long val) {
         if (fileLock != null) {
             try {
-                fileLock.close();
+                fileLock.release();
                 fileLock = null;
+                log.info("Released lock for file {}", canonicalFilename);
             } catch (IOException e) {
-                log.error("fileLock.close() IOException:", e);
+                log.error("IOException:", e);
             }
         }
 
@@ -173,6 +166,8 @@ public class FileReader extends Reader {
                 return safeReturn(0L);
             }
         }
+
+        log.info("Acquired lock for file {}", canonicalFilename);
 
         // Skip to offset
         try {
@@ -232,8 +227,9 @@ public class FileReader extends Reader {
         super.close();
         try {
             if (fileLock != null) {
-                fileLock.close();
+                fileLock.release();
                 fileLock = null;
+                log.info("Released lock for file {}", canonicalFilename);
             }
             fileChannel.close();
             streamParser.close();

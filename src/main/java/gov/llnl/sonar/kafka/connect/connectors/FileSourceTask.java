@@ -49,7 +49,8 @@ public class FileSourceTask extends SourceTask {
                     OFFSET_FIELD,
                     config.getFormat(),
                     OptionsParser.optionsStringToMap(config.getFormat()),
-                    0L);
+                    0L,
+                    null, null);
 
         } catch (Exception ex) {
             log.error("Exception:", ex);
