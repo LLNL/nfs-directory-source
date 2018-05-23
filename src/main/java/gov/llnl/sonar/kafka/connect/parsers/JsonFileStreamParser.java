@@ -8,6 +8,7 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
+import org.apache.kafka.connect.errors.DataException;
 
 import java.io.*;
 
@@ -45,9 +46,13 @@ public class JsonFileStreamParser extends FileStreamParser {
 
         try {
             datum = datumReader.read(datum, decoder);
+            currentLine++;
+            return avroConnectConverter.toConnectData(connectSchema, datum);
         } catch (AvroTypeException e) {
-            log.error("AvroTypeException", e);
+            log.error("AvroTypeException at {}:{}", filename, currentLine, e);
             throw new ParseException();
+        } catch (DataException e) {
+            log.error("DataException at {}:{}", filename, currentLine, e);
         } catch (EOFException e) {
             throw e;
         } catch (IOException e) {
@@ -55,7 +60,6 @@ public class JsonFileStreamParser extends FileStreamParser {
             throw new ParseException();
         }
 
-        return avroConnectConverter.toConnectData(connectSchema, datum);
-
+        return null;
     }
 }

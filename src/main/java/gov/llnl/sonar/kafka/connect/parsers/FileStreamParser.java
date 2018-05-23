@@ -17,6 +17,7 @@ public abstract class FileStreamParser {
     AvroData avroConnectConverter;
     Schema avroSchema;
     public org.apache.kafka.connect.data.Schema connectSchema;
+    Long currentLine = 0L;
 
     abstract void init();
     public abstract Object read() throws ParseException, EOFException;
@@ -36,7 +37,11 @@ public abstract class FileStreamParser {
         }
     }
 
-    public synchronized void seekToLine(Long line) throws EOFException {
+    public synchronized void seekToLine(Long line) throws FileNotFoundException, EOFException {
+        seekToLine(line, true);
+    }
+
+    public synchronized void seekToLine(Long line, Boolean init) throws FileNotFoundException, EOFException {
         try {
             close();
             fileInputStream = new FileInputStream(new File(filename));
@@ -45,8 +50,11 @@ public abstract class FileStreamParser {
                 dataInputStream.readLine();
             }
             inputStreamReader = new InputStreamReader(dataInputStream);
-            init();
-        } catch (EOFException e) {
+            currentLine = line;
+            if (init) {
+                init();
+            }
+        } catch(EOFException | FileNotFoundException e) {
             throw e;
         } catch (IOException e) {
             log.error("IOException:", e);
@@ -61,7 +69,7 @@ public abstract class FileStreamParser {
             // NOTE: Subclasses must use EITHER fileInputStream OR dataInputStream.
             //       Using both causes undefined behavior!
             this.filename = filename;
-            seekToLine(0L);
+            seekToLine(0L, false);
             connectSchema = avroConnectConverter.toConnectSchema(avroSchema);
         } catch (IOException e) {
             log.error("IOException:", e);

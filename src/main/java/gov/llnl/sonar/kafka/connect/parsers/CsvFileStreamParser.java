@@ -7,12 +7,11 @@ import org.apache.avro.Schema;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.errors.DataException;
 
 import java.io.*;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 @Slf4j
 public class CsvFileStreamParser extends FileStreamParser {
@@ -22,26 +21,26 @@ public class CsvFileStreamParser extends FileStreamParser {
     private Iterator<CSVRecord> csvRecordIterator;
     private CsvRecordConverter csvRecordConverter;
 
-    private CSVFormat csvFormatFromOptions(Map<String, String> formatOptions) {
+    private CSVFormat csvFormatFromOptions(Map<String, Object> formatOptions) {
         CSVFormat csvFormat = CSVFormat.DEFAULT;
-        for (Map.Entry<String, String> option : formatOptions.entrySet()) {
+        for (Map.Entry<String, Object> option : formatOptions.entrySet()) {
             switch (option.getKey()) {
                 case ("withHeader"):
-                    Boolean withHeader = Boolean.valueOf(option.getValue());
+                    Boolean withHeader = (Boolean) option.getValue();
                     if (withHeader) {
                         csvFormat = csvFormat.withFirstRecordAsHeader();
                     }
                     break;
                 case ("columns"):
-                    String[] columns = option.getValue().split(",");
-                    csvFormat = csvFormat.withHeader(columns);
+                    List<String> columns = (List<String>) option.getValue();
+                    csvFormat = csvFormat.withHeader(columns.toArray(new String[0]));
                     break;
                 case ("delimiter"):
-                    char delimiter = option.getValue().charAt(0);
+                    char delimiter = ((String) option.getValue()).charAt(0);
                     csvFormat = csvFormat.withDelimiter(delimiter);
                     break;
                 case ("quoteChar"):
-                    char quoteChar = option.getValue().charAt(0);
+                    char quoteChar = ((String) option.getValue()).charAt(0);
                     csvFormat = csvFormat.withQuote(quoteChar);
                     break;
             }
@@ -51,7 +50,7 @@ public class CsvFileStreamParser extends FileStreamParser {
 
     public CsvFileStreamParser(String filename,
                                Schema avroSchema,
-                               Map<String, String> formatOptions) {
+                               Map<String, Object> formatOptions) {
         super(filename, avroSchema);
 
         this.csvFormat = csvFormatFromOptions(formatOptions);
@@ -88,6 +87,8 @@ public class CsvFileStreamParser extends FileStreamParser {
         } catch (NumberFormatException e) {
             log.error("Error parsing {}", csvRecord.toMap());
             log.error("NumberFormatException:", e);
+        } catch (Exception e) {
+            log.error("Error parsing {}", csvRecord.toMap(), e);
         }
 
         return null;

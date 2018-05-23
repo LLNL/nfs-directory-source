@@ -1,12 +1,15 @@
 package gov.llnl.sonar.kafka.connect.converters;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class CsvRecordConverter extends Converter<Map<String, String>>{
@@ -54,6 +57,22 @@ public class CsvRecordConverter extends Converter<Map<String, String>>{
         for (Map.Entry<String, String> entry : recordMap.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
+
+            List<String> fieldNames = connectSchema.fields().stream()
+                    .map((Field f) -> f.name())
+                    .collect(Collectors.toList());
+
+            if (!fieldNames.contains(key)) {
+                log.error("Requested field: {}", key);
+                log.error("Value: {}", value);
+
+                List<String> fields = connectSchema.fields().stream()
+                        .map((Field f) -> "{" + f.name() + ":" + f.schema().type().getName() + "}")
+                        .collect(Collectors.toList());
+
+                log.error("Available fields: {}", String.join(",", fields));
+                throw new DataException("Schema mismatch");
+            }
 
             Object parsedValue = stringToConnectObject(value, connectSchema.field(key).schema().type());
             record = record.put(key, parsedValue);

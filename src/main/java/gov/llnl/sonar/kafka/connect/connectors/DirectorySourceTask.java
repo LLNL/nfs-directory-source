@@ -51,7 +51,7 @@ public class DirectorySourceTask extends SourceTask {
                     config.getFormat(),
                     OptionsParser.optionsStringToMap(config.getFormatOptions()));
 
-            log.info("Added directory {}", reader.getCanonicalDirname());
+            log.info("Added ingestion directory {}", reader.getCanonicalDirname());
 
         } catch (Exception ex) {
             log.error("Exception:", ex);
@@ -68,7 +68,7 @@ public class DirectorySourceTask extends SourceTask {
         try {
             Long numRecordsRead = reader.read(records, context);
             if (numRecordsRead > 0) {
-                log.info("Read {} records from directory {}", numRecordsRead, reader.getCanonicalDirname());
+                log.debug("Read {} records from directory {}", numRecordsRead, reader.getCanonicalDirname());
                 return records;
             }
             else {
@@ -89,7 +89,7 @@ public class DirectorySourceTask extends SourceTask {
 
     @Override
     public void stop() {
-        log.info("Task stopping");
+        log.debug("Task stopping");
         synchronized (this) {
             try {
                 if (reader != null) {

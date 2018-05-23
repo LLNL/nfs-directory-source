@@ -1,5 +1,6 @@
 package gov.llnl.sonar.kafka.connect.readers;
 
+import gov.llnl.sonar.kafka.connect.connectors.DirectorySourceConnector;
 import gov.llnl.sonar.kafka.connect.exceptions.BreakException;
 
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.Callable;
 
 import static java.nio.file.StandardOpenOption.*;
 
@@ -25,7 +27,7 @@ public class DirectoryReader extends Reader {
     private String completedDirectoryName;
     private Path dirPath;
 
-    private Long filesPerBatch = 10L;
+    private Long filesPerBatch = 1L;
 
     private String topic;
     private org.apache.avro.Schema avroSchema;
@@ -74,77 +76,87 @@ public class DirectoryReader extends Reader {
         }
     }
 
-    private FileReader lockedGetNextFileReader(Iterator<Path> pathWalker) {
+    private <T> T superLock(Callable<T> fn) {
 
-        FileReader result = null;
-        int numRetries = 100;
+        synchronized (DirectoryReader.class) {
 
-        // Get a process-wide lock for this function
-        Path pathWalkLockFile = Paths.get(completedDirectoryName, ".directory-walker-lock");
-        FileLock pathWalkLock = null;
-        while (numRetries >= 0) {
-            try {
-                pathWalkLock = FileChannel.open(pathWalkLockFile, READ, WRITE, CREATE, SYNC).tryLock();
-                break;
-            } catch (OverlappingFileLockException e) {
+            int numRetries = 100;
+
+            // Get a process-wide lock for this function
+            Path pathWalkLockFile = Paths.get(completedDirectoryName, DirectorySourceConnector.LOCK_FILENAME);
+            FileLock pathWalkLock = null;
+            while (numRetries >= 0) {
                 try {
-                    numRetries--;
-                    this.wait(100);
-                } catch (InterruptedException e1) {
+                    pathWalkLock = FileChannel.open(pathWalkLockFile, READ, WRITE, SYNC).tryLock();
+                    break;
+                } catch (OverlappingFileLockException e) {
+                    try {
+                        numRetries--;
+                        this.wait(100);
+                    } catch (InterruptedException e1) {
+                        return null;
+                    }
+                } catch (IOException e) {
+                    log.error("IOException:", e);
                     return null;
                 }
-            } catch(IOException e) {
-                log.error("IOException:", e);
+            }
+
+            if (pathWalkLock == null) {
                 return null;
             }
+
+            log.debug("PathWalker lock acquired");
+
+            T result = null;
+            try {
+                 result = fn.call();
+            } catch (Exception e) {
+                log.error("Exception:", e);
+            }
+
+            try {
+                pathWalkLock.release();
+                log.debug("PathWalker lock released");
+            } catch (IOException e) {
+                log.error("IOException:", e);
+            }
+
+            return result;
         }
-
-        if (pathWalkLock == null) {
-            return null;
-        }
-
-        log.info("PathWalker lock acquired");
-
-        result = getNextFileReader(pathWalker);
-
-        try {
-            pathWalkLock.release();
-            log.info("PathWalker lock released");
-        } catch (IOException e) {
-            log.error("IOException:", e);
-        }
-
-        return result;
     }
 
-    private FileReader getNextFileReader(Iterator<Path> pathWalker) {
+    private FileReader getNextFileReader() {
 
-        FileLock fileLock = null;
+        Iterator<Path> pathWalker;
+        FileLock fileLock;
         try {
+            pathWalker = Files.walk(dirPath).filter(Files::isRegularFile).iterator();
+
             while (pathWalker.hasNext()) {
                 Path p = pathWalker.next();
 
                 try {
                     // Check the path
-                    log.info("Checking path for {}", p.toString());
+                    log.debug("Checking path for {}", p.toString());
                     p = p.toRealPath();
                     String pathString = p.toString();
 
                     // Lock the output location
                     Path completedPath = Paths.get(completedDirectoryName, p.getFileName() + ".COMPLETED");
 
-                    log.info("Getting lock for {}", completedPath.toString());
+                    log.debug("Getting lock for {}", completedPath.toString());
                     fileLock = FileChannel.open(completedPath, READ, WRITE, CREATE, SYNC).tryLock();
-                    log.info("Checking lock for {}", completedPath.toString());
+                    log.debug("Checking lock for {}", completedPath.toString());
 
                     if (fileLock != null && fileLock.isValid()) {
 
-                        log.info("Acquired lock for file {}", pathString);
+                        log.debug("Acquired lock for file {}", pathString);
 
                         // We may have gotten the lock AFTER the file was moved
                         if (Files.notExists(p)) {
                             fileLock.release();
-                            log.info("File doesn't exist! Released lock for file {}", pathString);
+                            log.debug("File doesn't exist! Released lock for file {}", pathString);
                             throw new NoSuchFileException(String.format("File %s does not exist!", pathString));
                         }
 
@@ -170,51 +182,60 @@ public class DirectoryReader extends Reader {
                                 fileLock);
                     }
                 } catch (OverlappingFileLockException e) {
-                    log.info("File {} locked, continuing...", p.toString());
+                    log.debug("File {} locked, continuing...", p.toString());
                 } catch (NoSuchFileException e) {
-                    log.info("NoSuchFileException:", e);
+                    log.debug("NoSuchFileException:", e);
                 } catch (IOException e) {
-                    log.info("Probably a stale file handle, resetting...");
+                    log.debug("Probably a stale file handle, resetting...");
                 }
             }
         } catch (UncheckedIOException e) {
-            log.info("PathWalker stale, resetting...");
+            log.debug("PathWalker stale, resetting...");
+        } catch (IOException e) {
+            // nothing important
         }
         return null;
     }
 
+    private int purgeCurrentFileReader() {
+        currentFileReader.purgeFile();
+        return 0;
+    }
+
     @Override
-    public synchronized Long read(List<SourceRecord> records, SourceTaskContext context) {
+    public Long read(List<SourceRecord> records, SourceTaskContext context) {
 
         Long numRecords = 0L;
         Long filesRead = 0L;
 
         try {
 
-            Iterator<Path> pathWalker = Files.walk(dirPath).filter(Files::isRegularFile).iterator();
-
             while (filesRead < filesPerBatch) {
 
                 if (breakAndClose.get()) {
-                    log.info("Reader interrupted, exiting reader loop");
+                    log.debug("Reader interrupted, exiting reader loop");
                     throw new BreakException();
                 }
 
-                currentFileReader = lockedGetNextFileReader(pathWalker);
+                currentFileReader = superLock(this::getNextFileReader);
 
                 if (currentFileReader == null) {
-                    log.info("All files processed, exiting currentFileReader loop");
+                    log.debug("All files either locked or processed, exiting currentFileReader loop");
                     throw new BreakException();
                 }
 
                 try {
 
-                    log.info("Ingesting file {}", currentFileReader.getCanonicalFilename());
+                    log.debug("Ingesting file {}", currentFileReader.getCanonicalFilename());
                     Long numRecordsFile = currentFileReader.read(records, context);
                     log.info("Read {} records from file {}", numRecordsFile, currentFileReader.getCanonicalFilename());
                     currentFileReader.close();
 
                     currentOffsets.put(currentFileReader.getFilename(), currentFileReader.getCurrentOffset());
+
+                    if (currentFileReader.ingestCompleted) {
+                        superLock(this::purgeCurrentFileReader);
+                    }
 
                     filesRead += 1;
                     numRecords += numRecordsFile;
@@ -223,10 +244,8 @@ public class DirectoryReader extends Reader {
                     log.error("Exception:", e);
                 }
             }
-        } catch (IOException e) {
-            log.error("Exception:", e);
         } catch (BreakException b) {
-            log.info("Reader loop exited");
+            log.debug("Reader loop exited");
         }
 
         return numRecords;
@@ -238,13 +257,13 @@ public class DirectoryReader extends Reader {
 
     @Override
     public synchronized void close() {
-        log.info("Interrupting reader");
+        log.debug("Interrupting reader");
         breakAndClose.set(true);
         notifyAll();
         if (currentFileReader != null) {
             currentFileReader.close();
         }
-        log.info("Closed");
+        log.debug("Closed");
     }
 
 }
