@@ -35,7 +35,7 @@ public class DirectoryReader extends Reader {
     private String partitionField;
     private String offsetField;
     private String format;
-    Map<String, String> formatOptions;
+    Map<String, Object> formatOptions;
 
     private FileReader currentFileReader;
 
@@ -49,7 +49,7 @@ public class DirectoryReader extends Reader {
                            String partitionField,
                            String offsetField,
                            String format,
-                           Map<String, String> formatOptions)
+                           Map<String, Object> formatOptions)
         throws IOException {
 
         this.completedDirectoryName = completedDirectoryName;
