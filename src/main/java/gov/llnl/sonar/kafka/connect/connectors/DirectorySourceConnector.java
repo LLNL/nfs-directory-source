@@ -61,7 +61,14 @@ public class DirectorySourceConnector extends SourceConnector {
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
         log.info("Creating {} directory source tasks", maxTasks);
-        return new ArrayList<>(Collections.nCopies(maxTasks, config.originalsStrings()));
+
+        List<Map<String, String>> configs = Collections.nCopies(maxTasks, config.originalsStrings());
+
+        for (int i=0; i<maxTasks; i++) {
+            configs.get(i).put("task.id", String.valueOf(i));
+        }
+
+        return configs;
     }
 
     @Override

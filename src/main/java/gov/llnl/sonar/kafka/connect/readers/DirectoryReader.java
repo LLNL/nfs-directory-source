@@ -23,6 +23,7 @@ import static java.nio.file.StandardOpenOption.*;
 
 @Slf4j
 public class DirectoryReader extends Reader {
+    private String taskid;
     private String canonicalDirname;
     private String completedDirectoryName;
     private Path dirPath;
@@ -41,7 +42,8 @@ public class DirectoryReader extends Reader {
 
     Map<String, Long> currentOffsets = new HashMap<String, Long>();
 
-    public DirectoryReader(String dirname,
+    public DirectoryReader(String taskid,
+                           String dirname,
                            String completedDirectoryName,
                            String topic,
                            org.apache.avro.Schema avroSchema,
@@ -52,6 +54,7 @@ public class DirectoryReader extends Reader {
                            Map<String, Object> formatOptions)
         throws IOException {
 
+        this.taskid = taskid;
         this.completedDirectoryName = completedDirectoryName;
         this.topic = topic;
         this.avroSchema = avroSchema;
@@ -97,7 +100,7 @@ public class DirectoryReader extends Reader {
                         return null;
                     }
                 } catch (IOException e) {
-                    log.error("IOException:", e);
+                    log.error("Task {}: IOException:", taskid, e);
                     return null;
                 }
             }
@@ -106,20 +109,20 @@ public class DirectoryReader extends Reader {
                 return null;
             }
 
-            log.debug("PathWalker lock acquired");
+            log.info("Task {}: PathWalker lock acquired", taskid);
 
             T result = null;
             try {
                  result = fn.call();
             } catch (Exception e) {
-                log.error("Exception:", e);
+                log.error("Task {}: Exception:", taskid, e);
             }
 
             try {
                 pathWalkLock.release();
-                log.debug("PathWalker lock released");
+                log.info("Task {}: PathWalker lock released", taskid);
             } catch (IOException e) {
-                log.error("IOException:", e);
+                log.error("Task {}: IOException:", taskid, e);
             }
 
             return result;
@@ -138,25 +141,24 @@ public class DirectoryReader extends Reader {
 
                 try {
                     // Check the path
-                    log.debug("Checking path for {}", p.toString());
+                    log.debug("Task {}: Checking path for {}", taskid, p.toString());
                     p = p.toRealPath();
                     String pathString = p.toString();
 
-                    // Lock the output location
-                    Path completedPath = Paths.get(completedDirectoryName, p.getFileName() + ".COMPLETED");
+                    // Lock the file
+                    Path lockFilePath = Paths.get(completedDirectoryName,"." + p.getFileName() + ".lock");
 
-                    log.debug("Getting lock for {}", completedPath.toString());
-                    fileLock = FileChannel.open(completedPath, READ, WRITE, CREATE, SYNC).tryLock();
-                    log.debug("Checking lock for {}", completedPath.toString());
+                    fileLock = FileChannel.open(lockFilePath, READ, WRITE, CREATE, SYNC).tryLock();
+                    log.info("Task {}: Created lock file {}", taskid, lockFilePath.toString());
 
                     if (fileLock != null && fileLock.isValid()) {
 
-                        log.debug("Acquired lock for file {}", pathString);
+                        log.info("Task {}: Acquired lock on file {}", taskid, lockFilePath.toString());
 
                         // We may have gotten the lock AFTER the file was moved
                         if (Files.notExists(p)) {
                             fileLock.release();
-                            log.debug("File doesn't exist! Released lock for file {}", pathString);
+                            log.info("Task {}: File doesn't exist! Released lock file {}", taskid, lockFilePath);
                             throw new NoSuchFileException(String.format("File %s does not exist!", pathString));
                         }
 
@@ -168,6 +170,7 @@ public class DirectoryReader extends Reader {
 
                         // Lock acquired and file exists!
                         return new FileReader(
+                                taskid,
                                 pathString,
                                 completedDirectoryName,
                                 topic,
@@ -182,9 +185,9 @@ public class DirectoryReader extends Reader {
                                 fileLock);
                     }
                 } catch (OverlappingFileLockException e) {
-                    log.debug("File {} locked, continuing...", p.toString());
+                    log.info("Task {}: File {} locked, continuing...", taskid, p.toString());
                 } catch (NoSuchFileException e) {
-                    log.debug("NoSuchFileException:", e);
+                    log.info("Task {}: NoSuchFileException:", taskid, e);
                 } catch (IOException e) {
                     log.debug("Probably a stale file handle, resetting...");
                 }
@@ -203,7 +206,7 @@ public class DirectoryReader extends Reader {
     }
 
     @Override
-    public Long read(List<SourceRecord> records, SourceTaskContext context) {
+    public synchronized Long read(List<SourceRecord> records, SourceTaskContext context) {
 
         Long numRecords = 0L;
         Long filesRead = 0L;
@@ -226,9 +229,9 @@ public class DirectoryReader extends Reader {
 
                 try {
 
-                    log.debug("Ingesting file {}", currentFileReader.getCanonicalFilename());
+                    log.info("Task {}: Ingesting file {}", taskid, currentFileReader.getCanonicalFilename());
                     Long numRecordsFile = currentFileReader.read(records, context);
-                    log.info("Read {} records from file {}", numRecordsFile, currentFileReader.getCanonicalFilename());
+                    log.info("Task {}: Read {} records from file {}", taskid, numRecordsFile, currentFileReader.getCanonicalFilename());
                     currentFileReader.close();
 
                     currentOffsets.put(currentFileReader.getFilename(), currentFileReader.getCurrentOffset());
@@ -241,7 +244,7 @@ public class DirectoryReader extends Reader {
                     numRecords += numRecordsFile;
 
                 } catch (Exception e) {
-                    log.error("Exception:", e);
+                    log.error("Task {}: Exception:", taskid, e);
                 }
             }
         } catch (BreakException b) {

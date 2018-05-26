@@ -14,6 +14,7 @@ import java.util.Map;
 
 @Slf4j
 public class FileSourceTask extends SourceTask {
+    private String taskid;
     private static final String PARTITION_FIELD = "filename";
     private static final String OFFSET_FIELD = "line";
 
@@ -26,6 +27,9 @@ public class FileSourceTask extends SourceTask {
 
     @Override
     public void start(Map<String, String> map) {
+
+        taskid = map.get("task.id");
+
         FileSourceConfig config = new FileSourceConfig(map);
         try {
 
@@ -39,6 +43,7 @@ public class FileSourceTask extends SourceTask {
             }
 
             reader = new FileReader(
+                    taskid,
                     relativeFilename,
                     config.getCompletedDirname(),
                     config.getTopic(),

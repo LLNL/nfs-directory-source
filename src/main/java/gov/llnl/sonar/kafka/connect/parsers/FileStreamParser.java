@@ -37,27 +37,21 @@ public abstract class FileStreamParser {
         }
     }
 
-    public synchronized void seekToLine(Long line) throws FileNotFoundException, EOFException {
+    public synchronized void seekToLine(Long line) throws FileNotFoundException, EOFException, IOException {
         seekToLine(line, true);
     }
 
-    public synchronized void seekToLine(Long line, Boolean init) throws FileNotFoundException, EOFException {
-        try {
-            close();
-            fileInputStream = new FileInputStream(new File(filename));
-            dataInputStream = new DataInputStream(fileInputStream);
-            for (Long l=0L; l<line; l++) {
-                dataInputStream.readLine();
-            }
-            inputStreamReader = new InputStreamReader(dataInputStream);
-            currentLine = line;
-            if (init) {
-                init();
-            }
-        } catch(EOFException | FileNotFoundException e) {
-            throw e;
-        } catch (IOException e) {
-            log.error("IOException:", e);
+    public synchronized void seekToLine(Long line, Boolean init) throws FileNotFoundException, EOFException, IOException {
+        close();
+        fileInputStream = new FileInputStream(new File(filename));
+        dataInputStream = new DataInputStream(fileInputStream);
+        for (Long l=0L; l<line; l++) {
+            dataInputStream.readLine();
+        }
+        inputStreamReader = new InputStreamReader(dataInputStream);
+        currentLine = line;
+        if (init) {
+            init();
         }
     }
 

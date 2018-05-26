@@ -16,6 +16,7 @@ import java.util.Map;
 @Slf4j
 public class DirectorySourceTask extends SourceTask {
 
+    private String taskid;
     private static final String PARTITION_FIELD = "filename";
     private static final String OFFSET_FIELD = "line";
 
@@ -28,6 +29,9 @@ public class DirectorySourceTask extends SourceTask {
 
     @Override
     public void start(Map<String, String> map) {
+
+        taskid = map.get("task.id");
+
         DirectorySourceConfig config = new DirectorySourceConfig(map);
         try {
             String relativeDirname = config.getDirname();
@@ -41,6 +45,7 @@ public class DirectorySourceTask extends SourceTask {
             }
 
             reader = new DirectoryReader(
+                    taskid,
                     relativeDirname,
                     completedDirname,
                     config.getTopic(),
@@ -54,7 +59,7 @@ public class DirectorySourceTask extends SourceTask {
             log.info("Added ingestion directory {}", reader.getCanonicalDirname());
 
         } catch (Exception ex) {
-            log.error("Exception:", ex);
+            log.error("Task {}: Exception:", taskid, ex);
             log.error("Start failed, stopping task!");
             this.stop();
         }
@@ -68,17 +73,17 @@ public class DirectorySourceTask extends SourceTask {
         try {
             Long numRecordsRead = reader.read(records, context);
             if (numRecordsRead > 0) {
-                log.debug("Read {} records from directory {}", numRecordsRead, reader.getCanonicalDirname());
+                log.info("Task {}: Read {} records from directory {}", taskid, numRecordsRead, reader.getCanonicalDirname());
                 return records;
             }
             else {
-                log.debug("No records read from {}, sleeping for 1 second", reader.getCanonicalDirname());
+                log.debug("Task {}: No records read from {}, sleeping for 1 second", taskid, reader.getCanonicalDirname());
                 synchronized (this) {
                     this.wait(1000);
                 }
             }
         } catch (Exception ex) {
-            log.error("Exception:", ex);
+            log.error("Task {}: Exception:", taskid, ex);
             synchronized (this) {
                 this.wait(1000);
             }
@@ -96,7 +101,7 @@ public class DirectorySourceTask extends SourceTask {
                     reader.close();
                 }
             } catch (Exception ex) {
-                log.error("Exception:", ex);
+                log.error("Task {}: Exception:", taskid, ex);
             }
             this.notify();
         }

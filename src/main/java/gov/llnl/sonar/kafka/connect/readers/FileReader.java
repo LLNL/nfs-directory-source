@@ -17,26 +17,24 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.SYNC;
 import static java.nio.file.StandardOpenOption.WRITE;
 
 @Slf4j
 public class FileReader extends Reader {
+    private String taskid;
     private String filename;
     private String canonicalFilename;
     private Path canonicalPath;
-    private Path completedDirectoryPath;
+    private Path completedFilePath;
+    private Path lockFilePath;
     private String topic;
     private FileChannel fileChannel;
     private FileLock fileLock;
@@ -51,7 +49,8 @@ public class FileReader extends Reader {
 
     public Boolean ingestCompleted = false;
 
-    public FileReader(String filename,
+    public FileReader(String taskid,
+                      String filename,
                       String completedDirectoryName,
                       String topic,
                       org.apache.avro.Schema avroSchema,
@@ -64,6 +63,7 @@ public class FileReader extends Reader {
                       FileChannel fileChannel,
                       FileLock fileLock) {
 
+        this.taskid = taskid;
         this.filename = filename;
         this.topic = topic;
         this.batchSize = batchSize;
@@ -79,11 +79,13 @@ public class FileReader extends Reader {
                 this.canonicalFilename = file.getCanonicalPath();
 
                 // TODO: handle name collisions /dir/foo/file1 /dir/bar/file1
-                this.completedDirectoryPath = Paths.get(completedDirectoryName,canonicalPath.getFileName() + ".COMPLETED");
+                this.completedFilePath = Paths.get(completedDirectoryName,canonicalPath.getFileName() + ".COMPLETED");
+                this.lockFilePath = Paths.get(completedDirectoryName,"." + canonicalPath.getFileName() + ".lock");
 
                 // Get file channel if not exists
                 if (fileChannel == null) {
-                    this.fileChannel = FileChannel.open(completedDirectoryPath, READ, WRITE, SYNC);
+                    this.fileChannel = FileChannel.open(lockFilePath, READ, WRITE, SYNC);
+                    log.info("Task {}: Created lock file {}", taskid, lockFilePath.toString());
                 } else {
                     this.fileChannel = fileChannel;
                 }
@@ -91,12 +93,16 @@ public class FileReader extends Reader {
                 // Get file lock if not exists
                 if (fileLock == null) {
                     this.fileLock = this.fileChannel.tryLock();
+                    log.info("Task {}: Acquired lock on file {}", taskid, lockFilePath.toString());
                 } else {
                     this.fileLock = fileLock;
                 }
 
                 // Now that we have the lock, make sure the file still exists
-                if (!file.exists()) {
+                if (Files.notExists(canonicalPath)) {
+                    fileLock.release();
+                    log.info("Task {}: File {} doesn't exist! Released lock for file {}", taskid, canonicalFilename, lockFilePath);
+                    fileChannel.close();
                     throw new NoSuchFileException(String.format("File %s does not exist!",filename));
                 }
 
@@ -114,24 +120,24 @@ public class FileReader extends Reader {
                 break;
 
             } catch (NoSuchFileException e) {
-                log.error("NoSuchFileException:", e);
+                log.error("Task {}: NoSuchFileException:", taskid, e);
             } catch (Exception e) {
-                log.error("Exception:", e);
+                log.error("Task {}: Exception:", taskid, e);
             }
         }
 
-        log.info("Added ingestion file {}", canonicalFilename);
+        log.info("Task {}: Added ingestion file {}", taskid, canonicalFilename);
     }
 
     public void purgeFile() {
         try {
-            log.info("Purging ingested file {}", canonicalFilename);
-            Files.move(canonicalPath, completedDirectoryPath, ATOMIC_MOVE, REPLACE_EXISTING);
-        } catch (NoSuchFileException e) {
+            log.info("Task {}: Purging ingested file {}", taskid, canonicalFilename);
+            Files.move(canonicalPath, completedFilePath, ATOMIC_MOVE);
+        } catch (NoSuchFileException | FileAlreadyExistsException e) {
             log.debug("File {} already purged");
         } catch(IOException e) {
-            log.error("Error moving ingested file {}", canonicalFilename);
-            log.error("IOException:", e);
+            log.error("Task {}: Error moving ingested file {}", taskid, canonicalFilename);
+            log.error("Task {}: IOException:", taskid, e);
         }
         close();
     }
@@ -141,9 +147,9 @@ public class FileReader extends Reader {
             try {
                 fileLock.release();
                 fileLock = null;
-                log.debug("Released lock for file {}", canonicalFilename);
+                log.info("Task {}: Released lock for file {}", taskid, canonicalFilename);
             } catch (IOException e) {
-                log.error("IOException:", e);
+                log.error("Task {}: IOException:", taskid, e);
             }
         }
 
@@ -151,7 +157,7 @@ public class FileReader extends Reader {
     }
 
     @Override
-    public Long read(List<SourceRecord> records, SourceTaskContext context)
+    public synchronized Long read(List<SourceRecord> records, SourceTaskContext context)
             throws FileLockedException {
 
         // TODO: filechannel can get closed after this ?!
@@ -169,27 +175,30 @@ public class FileReader extends Reader {
             try {
                 fileLock = fileChannel.tryLock();
                 if (fileLock == null) {
-                    log.debug("File {} locked, waiting for a second before trying again...", canonicalFilename);
+                    log.info("Task {}: File {} locked, waiting for a second before trying again...", taskid, lockFilePath);
                     return safeReturn(0L);
                 }
+                log.info("Task {}: Acquired lock on file {}", taskid, lockFilePath.toString());
             } catch (OverlappingFileLockException e) {
+                log.info("Task {}: File {} locked, waiting for a second before trying again...", taskid, lockFilePath);
                 return safeReturn(0L);
             } catch (IOException e) {
-                log.error("IOException:", e);
+                log.error("Task {}: IOException:", taskid, e);
                 return safeReturn(0L);
             }
         }
 
-        log.debug("Acquired lock for file {}", canonicalFilename);
-
         // Skip to offset
         try {
-            log.info("Reading from file {} line {}", canonicalFilename, currentOffset);
+            log.info("Task {}: Reading from file {} line {}", taskid, canonicalFilename, currentOffset);
             streamParser.seekToLine(currentOffset);
         } catch (EOFException | FileNotFoundException e) {
             ingestCompleted = true;
+            log.info("Task {}: Ingest from file {} complete!", taskid, canonicalFilename);
             close();
             return safeReturn(0L);
+        } catch (IOException e) {
+            log.error("Task {}: Task {}: IOException", taskid, taskid, e);
         }
 
         // Do the read
@@ -216,9 +225,10 @@ public class FileReader extends Reader {
                 close();
             } catch (EOFException e) {
                 ingestCompleted = true;
+                log.info("Task {}: Ingest from file {} complete!", taskid, canonicalFilename);
                 close();
             } catch (Exception e) {
-                log.error("Exception:", e);
+                log.error("Task {}: Exception:", taskid, e);
             }
 
         }
@@ -241,15 +251,18 @@ public class FileReader extends Reader {
     public synchronized void close() {
         super.close();
         try {
-            if (fileLock != null) {
-                fileLock.release();
-                fileLock = null;
-                log.debug("Released lock for file {}", canonicalFilename);
+            // Only release the lock if it's not completed
+            if (!ingestCompleted) {
+                if (fileLock != null) {
+                    fileLock.release();
+                    fileLock = null;
+                    log.info("Task {}: Released lock for file {}", taskid, lockFilePath.toString());
+                }
+                fileChannel.close();
             }
-            fileChannel.close();
             streamParser.close();
         } catch (Exception ex) {
-            log.error("Exception:", ex);
+            log.error("Task {}: Exception:", taskid, ex);
         }
     }
 }
