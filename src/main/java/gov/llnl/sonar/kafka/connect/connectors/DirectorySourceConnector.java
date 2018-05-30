@@ -37,15 +37,19 @@ public class DirectorySourceConnector extends SourceConnector {
         String absoluteDirname = absolutePath.toString();
         props.put("dirname", absoluteDirname);
 
+        config = new DirectorySourceConfig(props);
+
         // Create new file offset manager in zookeeper (deleting if it exists)
         try {
-            log.info("Creating file offset manager {}", absoluteDirname);
-            fileOffsetManager = new FileOffsetManager("rzsonar8:2181", absoluteDirname);
+            log.info("Creating file offset manager {}", config.getDirname());
+            fileOffsetManager = new FileOffsetManager(
+                    config.getZooKeeperHost(),
+                    config.getZooKeeperPort(),
+                    config.getDirname());
         } catch (Exception e) {
             log.error("Exception:", e);
         }
 
-        config = new DirectorySourceConfig(props);
 
         // BackupUtil.createBackupTar(
         //         Paths.get(config.getDirname()),

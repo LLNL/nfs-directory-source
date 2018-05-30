@@ -16,6 +16,11 @@ public class DirectorySourceConfig extends AbstractConfig {
         this(conf(), parsedConfig);
     }
 
+    public static final String ZKHOST = "zk.host";
+    public static final String ZKHOST_DOC = "ZooKeeper hostname";
+    public static final String ZKPORT = "zk.port";
+    public static final String ZKPORT_DOC = "ZooKeeper port";
+
     public static final String DIRNAME = "dirname";
     public static final String DIRNAME_DOC = "The directory to read from.";
     public static final String COMPLETED_DIRNAME = "completed.dirname";
@@ -46,6 +51,8 @@ public class DirectorySourceConfig extends AbstractConfig {
 
     public static ConfigDef conf() {
         return new ConfigDef()
+                .define(ZKHOST, Type.STRING, "localhost", Importance.HIGH, ZKHOST_DOC)
+                .define(ZKPORT, Type.STRING, "2181", Importance.HIGH, ZKPORT_DOC)
                 .define(DIRNAME, Type.STRING, Importance.HIGH, DIRNAME_DOC)
                 .define(COMPLETED_DIRNAME, Type.STRING, Importance.HIGH, COMPLETED_DIRNAME_DOC)
                 .define(TOPIC, Type.STRING, Importance.HIGH, TOPIC_DOC)
@@ -57,6 +64,8 @@ public class DirectorySourceConfig extends AbstractConfig {
                 ;
     }
 
+    public String getZooKeeperHost() { return this.getString(ZKHOST); }
+    public String getZooKeeperPort() { return this.getString(ZKPORT); }
     public String getDirname() { return this.getString(DIRNAME); }
     public String getCompletedDirname() { return this.getString(COMPLETED_DIRNAME); }
     public String getTopic() { return this.getString(TOPIC); }

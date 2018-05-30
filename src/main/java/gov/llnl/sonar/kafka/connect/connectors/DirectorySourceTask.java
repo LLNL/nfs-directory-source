@@ -34,7 +34,7 @@ public class DirectorySourceTask extends SourceTask {
 
         DirectorySourceConfig config = new DirectorySourceConfig(map);
         try {
-            this.taskid = InetAddress.getLocalHost().getHostName();
+            this.taskid = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
 
             String relativeDirname = config.getDirname();
             String completedDirname = config.getCompletedDirname();
@@ -55,7 +55,9 @@ public class DirectorySourceTask extends SourceTask {
                     PARTITION_FIELD,
                     OFFSET_FIELD,
                     config.getFormat(),
-                    OptionsParser.optionsStringToMap(config.getFormatOptions()));
+                    OptionsParser.optionsStringToMap(config.getFormatOptions()),
+                    config.getZooKeeperHost(),
+                    config.getZooKeeperPort());
 
             log.info("Task {}: Added ingestion directory {}", taskid, reader.getCanonicalDirname());
 

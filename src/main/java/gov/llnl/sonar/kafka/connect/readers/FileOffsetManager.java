@@ -23,10 +23,10 @@ public class FileOffsetManager {
 
     private InterProcessLock lock;
 
-    public FileOffsetManager(String zooKeeperHostname, String fileOffsetPath) throws Exception {
+    public FileOffsetManager(String zooKeeperHost, String zooKeeperPort, String fileOffsetPath) throws Exception {
         this.zooKeeperPath = fileOffsetPath;
 
-        client = CuratorFrameworkFactory.newClient(zooKeeperHostname, new ExponentialBackoffRetry(1000, 3));
+        client = CuratorFrameworkFactory.newClient(zooKeeperHost + ":" + zooKeeperPort, new ExponentialBackoffRetry(1000, 3));
         client.start();
         client.blockUntilConnected();
 

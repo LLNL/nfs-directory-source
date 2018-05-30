@@ -61,8 +61,10 @@ public class FileReader extends Reader {
                       String offsetField,
                       String format,
                       Map<String, Object> formatOptions,
-                      Long fileOffset) throws UnknownHostException {
-        this.taskid = InetAddress.getLocalHost().getHostName();
+                      Long fileOffset)
+            throws UnknownHostException {
+
+        this.taskid = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
         this.path = path;
         this.topic = topic;
         this.batchSize = batchSize;

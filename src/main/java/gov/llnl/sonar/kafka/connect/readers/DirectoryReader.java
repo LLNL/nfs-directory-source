@@ -27,14 +27,15 @@ public class DirectoryReader extends Reader {
     private String topic;
     private org.apache.avro.Schema avroSchema;
     private Long batchSize;
+    private Long remainingBatch;
     private String partitionField;
     private String offsetField;
     private String format;
-    Map<String, Object> formatOptions;
+    private Map<String, Object> formatOptions;
 
     private FileReader currentFileReader;
 
-    FileOffsetManager fileOffsetManager;
+    private FileOffsetManager fileOffsetManager;
 
     public DirectoryReader(String dirname,
                            String completedDirectoryName,
@@ -44,10 +45,12 @@ public class DirectoryReader extends Reader {
                            String partitionField,
                            String offsetField,
                            String format,
-                           Map<String, Object> formatOptions)
-        throws IOException {
+                           Map<String, Object> formatOptions,
+                           String zooKeeperHost,
+                           String zooKeeperPort)
+            throws IOException {
 
-        this.taskid = InetAddress.getLocalHost().getHostName();
+        this.taskid = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
         this.completedDirectoryName = completedDirectoryName;
         this.topic = topic;
         this.avroSchema = avroSchema;
@@ -72,7 +75,7 @@ public class DirectoryReader extends Reader {
         }
 
         try {
-            this.fileOffsetManager = new FileOffsetManager("rzsonar8:2181", dirname);
+            this.fileOffsetManager = new FileOffsetManager(zooKeeperHost, zooKeeperPort, dirname);
         } catch (Exception e) {
             log.error("Task {}: {}", taskid, e);
         }
@@ -160,7 +163,7 @@ public class DirectoryReader extends Reader {
                                 completedDirectoryName,
                                 topic,
                                 avroSchema,
-                                batchSize,
+                                remainingBatch,
                                 partitionField,
                                 offsetField,
                                 format,
@@ -203,11 +206,12 @@ public class DirectoryReader extends Reader {
     public synchronized Long read(List<SourceRecord> records, SourceTaskContext context) {
 
         Long numRecords = 0L;
-        Long filesRead = 0L;
+
+        remainingBatch = batchSize;
 
         try {
 
-            while (filesRead < filesPerBatch) {
+            while (remainingBatch > 0L) {
 
                 if (breakAndClose.get()) {
                     log.debug("Reader interrupted, exiting reader loop");
@@ -230,7 +234,7 @@ public class DirectoryReader extends Reader {
 
                     fileOffsetLockedFunction(this::updateFileOffsets);
 
-                    filesRead += 1;
+                    remainingBatch -= numRecordsFile;
                     numRecords += numRecordsFile;
 
                 } catch (Exception e) {

@@ -31,7 +31,7 @@ public class FileSourceTask extends SourceTask {
 
         FileSourceConfig config = new FileSourceConfig(map);
         try {
-            this.taskid = InetAddress.getLocalHost().getHostName();
+            this.taskid = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
 
             String relativeFilename = config.getFilename();
 
