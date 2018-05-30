@@ -42,6 +42,7 @@ public class FileSourceTask extends SourceTask {
                 avroSchema = new org.apache.avro.Schema.Parser().parse(new File(config.getAvroSchemaFilename()));
             }
 
+            // TODO: get offset from zookeeper
             reader = new FileReader(
                     relativeFilename,
                     config.getCompletedDirname(),
@@ -55,12 +56,12 @@ public class FileSourceTask extends SourceTask {
                     0L);
 
         } catch (Exception ex) {
-            log.error("Exception:", ex);
+            log.error("Task {}: {}", taskID, ex);
         }
     }
 
     @Override
-    public List<SourceRecord> poll() throws InterruptedException {
+    public List<SourceRecord> poll() {
 
         ArrayList<SourceRecord> records = new ArrayList<>();
 
@@ -74,22 +75,19 @@ public class FileSourceTask extends SourceTask {
             return records;
 
         } catch (Exception ex) {
-            log.error("Exception:", ex);
+            log.error("Task {}: {}", taskID, ex);
         }
         return null;
     }
 
     @Override
     public void stop() {
-        log.info("Task stopping");
-        synchronized(this) {
-            this.notifyAll();
-            try {
-                reader.close();
-            } catch (Exception ex) {
-                log.error("Exception:", ex);
-            }
-            reader.notify();
+        log.info("Task {}: Stopping", taskID);
+        try {
+            reader.close();
+        } catch (Exception ex) {
+            log.error("Task {}: {}", taskID, ex);
         }
+        reader.notify();
     }
 }
