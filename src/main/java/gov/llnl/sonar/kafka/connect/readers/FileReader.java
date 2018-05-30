@@ -5,7 +5,6 @@ import gov.llnl.sonar.kafka.connect.exceptions.ParseException;
 import gov.llnl.sonar.kafka.connect.parsers.CsvFileStreamParser;
 import gov.llnl.sonar.kafka.connect.parsers.FileStreamParser;
 import gov.llnl.sonar.kafka.connect.parsers.JsonFileStreamParser;
-import gov.llnl.sonar.kafka.connect.util.ConnectUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
@@ -22,7 +21,7 @@ import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 
 @Slf4j
 public class FileReader extends Reader {
-    private String taskid;
+    private String taskID;
     private Path path;
     private Path completedFilePath;
     private String topic;
@@ -64,7 +63,7 @@ public class FileReader extends Reader {
                       Long fileOffset)
             throws UnknownHostException {
 
-        this.taskid = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
+        this.taskID = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
         this.path = path;
         this.topic = topic;
         this.batchSize = batchSize;
@@ -96,24 +95,24 @@ public class FileReader extends Reader {
                 break;
 
             } catch (NoSuchFileException e) {
-                log.error("Task {}: NoSuchFileException:", taskid, e);
+                log.error("Task {}: NoSuchFileException:", taskID, e);
             } catch (Exception e) {
-                log.error("Task {}: Exception:", taskid, e);
+                log.error("Task {}: Exception:", taskID, e);
             }
         }
 
-        log.info("Task {}: Added ingestion file {}", taskid, path);
+        log.info("Task {}: Added ingestion file {}", taskID, path);
     }
 
     public void purgeFile() {
         try {
-            log.info("Task {}: Purging ingested file {}", taskid, path);
+            log.info("Task {}: Purging ingested file {}", taskID, path);
             Files.move(path, completedFilePath, ATOMIC_MOVE);
         } catch (NoSuchFileException | FileAlreadyExistsException e) {
             log.debug("File {} already purged");
         } catch(IOException e) {
-            log.error("Task {}: Error moving ingested file {}", taskid, path);
-            log.error("Task {}: IOException:", taskid, e);
+            log.error("Task {}: Error moving ingested file {}", taskID, path);
+            log.error("Task {}: IOException:", taskID, e);
         }
         close();
     }
@@ -133,16 +132,16 @@ public class FileReader extends Reader {
 
         // Skip to offset
         try {
-            log.info("Task {}: Reading from file {} line {}", taskid, path, currentOffset);
+            log.info("Task {}: Reading from file {} line {}", taskID, path, currentOffset);
             streamParser.seekToLine(currentOffset);
         } catch (EOFException | FileNotFoundException e) {
             ingestCompleted = true;
             currentOffset = -1L;
-            log.info("Task {}: Ingest from file {} complete!", taskid, path);
+            log.info("Task {}: Ingest from file {} complete!", taskID, path);
             close();
             return 0L;
         } catch (IOException e) {
-            log.error("Task {}: Task {}: IOException", taskid, taskid, e);
+            log.error("Task {}: Task {}: IOException", taskID, taskID, e);
         }
 
         // Do the read
@@ -171,10 +170,10 @@ public class FileReader extends Reader {
             } catch (EOFException e) {
                 ingestCompleted = true;
                 currentOffset = -1L;
-                log.info("Task {}: Ingest from file {} complete!", taskid, path);
+                log.info("Task {}: Ingest from file {} complete!", taskID, path);
                 close();
             } catch (Exception e) {
-                log.error("Task {}: Exception:", taskid, e);
+                log.error("Task {}: Exception:", taskID, e);
             }
 
         }
@@ -195,7 +194,7 @@ public class FileReader extends Reader {
         try {
             streamParser.close();
         } catch (Exception ex) {
-            log.error("Task {}: Exception:", taskid, ex);
+            log.error("Task {}: Exception:", taskID, ex);
         }
     }
 }

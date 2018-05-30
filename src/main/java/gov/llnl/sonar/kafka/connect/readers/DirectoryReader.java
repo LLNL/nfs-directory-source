@@ -17,12 +17,10 @@ import java.util.concurrent.Callable;
 
 @Slf4j
 public class DirectoryReader extends Reader {
-    private String taskid;
+    private String taskID;
     private String canonicalDirname;
     private String completedDirectoryName;
     private Path dirPath;
-
-    private Long filesPerBatch = 1L;
 
     private String topic;
     private org.apache.avro.Schema avroSchema;
@@ -50,7 +48,7 @@ public class DirectoryReader extends Reader {
                            String zooKeeperPort)
             throws IOException {
 
-        this.taskid = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
+        this.taskID = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
         this.completedDirectoryName = completedDirectoryName;
         this.topic = topic;
         this.avroSchema = avroSchema;
@@ -77,7 +75,7 @@ public class DirectoryReader extends Reader {
         try {
             this.fileOffsetManager = new FileOffsetManager(zooKeeperHost, zooKeeperPort, dirname);
         } catch (Exception e) {
-            log.error("Task {}: {}", taskid, e);
+            log.error("Task {}: {}", taskID, e);
         }
     }
 
@@ -88,11 +86,11 @@ public class DirectoryReader extends Reader {
 
             // Lock the file offset manager
             if (!fileOffsetManager.lock()) {
-                log.info("Task {}: FileOffsetManager failed to acquire lock", taskid);
+                log.info("Task {}: FileOffsetManager failed to acquire lock", taskID);
                 return null;
             }
 
-            log.info("Task {}: FileOffsetManager lock acquired", taskid);
+            log.info("Task {}: FileOffsetManager lock acquired", taskID);
 
             // Download the file offset map
             try {
@@ -100,29 +98,29 @@ public class DirectoryReader extends Reader {
             } catch (EOFException e) {
                 // empty file offset map, that's ok
             } catch (Exception e) {
-                log.error("Task {}: {}", taskid, e);
+                log.error("Task {}: {}", taskID, e);
             }
-            log.info("Task {}: Downloaded file offset map {}", taskid, fileOffsetManager.getOffsetMap());
+            log.info("Task {}: Downloaded file offset map {}", taskID, fileOffsetManager.getOffsetMap());
 
             // Run the function
             T result = null;
             try {
                  result = fn.call();
             } catch (Exception e) {
-                log.error("Task {}: {}", taskid, e);
+                log.error("Task {}: {}", taskID, e);
             }
 
             // Upload the file offset map
-            log.info("Task {}: Uploading file offset map {}", taskid, fileOffsetManager.getOffsetMap());
+            log.info("Task {}: Uploading file offset map {}", taskID, fileOffsetManager.getOffsetMap());
             try {
                 fileOffsetManager.upload();
             } catch (Exception e) {
-                log.error("Task {}: {}", taskid, e);
+                log.error("Task {}: {}", taskID, e);
             }
 
             // Unlock the file offset manager
             if (!fileOffsetManager.unlock()) {
-                log.info("Task {}: FileOffsetManager failed to release lock", taskid);
+                log.info("Task {}: FileOffsetManager failed to release lock", taskID);
             }
 
             return result;
@@ -170,14 +168,14 @@ public class DirectoryReader extends Reader {
                                 formatOptions,
                                 offset.offset);
                     } catch (Exception e) {
-                        log.info("Task {}: Exception:", taskid, e);
+                        log.info("Task {}: Exception:", taskID, e);
                     }
                 }
             }
         } catch (UncheckedIOException e) {
-            log.info("Task {}: UncheckedIOException", taskid, e);
+            log.info("Task {}: UncheckedIOException", taskID, e);
         } catch (IOException e) {
-            log.info("Task {}: IOException", taskid, e);
+            log.info("Task {}: IOException", taskID, e);
         }
         return null;
     }
@@ -227,9 +225,9 @@ public class DirectoryReader extends Reader {
 
                 try {
 
-                    log.info("Task {}: Ingesting file {}", taskid, currentFileReader.getPath());
+                    log.info("Task {}: Ingesting file {}", taskID, currentFileReader.getPath());
                     Long numRecordsFile = currentFileReader.read(records, context);
-                    log.info("Task {}: Read {} records from file {}", taskid, numRecordsFile, currentFileReader.getPath());
+                    log.info("Task {}: Read {} records from file {}", taskID, numRecordsFile, currentFileReader.getPath());
                     currentFileReader.close();
 
                     fileOffsetLockedFunction(this::updateFileOffsets);
@@ -238,7 +236,7 @@ public class DirectoryReader extends Reader {
                     numRecords += numRecordsFile;
 
                 } catch (Exception e) {
-                    log.error("Task {}: {}", taskid, e);
+                    log.error("Task {}: {}", taskID, e);
                 }
             }
         } catch (BreakException b) {
@@ -255,14 +253,13 @@ public class DirectoryReader extends Reader {
     @Override
     public synchronized void close() {
         breakAndClose.set(true);
-        notifyAll();
         if (currentFileReader != null) {
             currentFileReader.close();
         }
         try {
             fileOffsetManager.close();
         } catch (Exception e) {
-            log.error("Task {}: {}", taskid, e);
+            log.error("Task {}: {}", taskID, e);
         }
     }
 

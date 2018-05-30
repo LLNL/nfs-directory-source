@@ -1,6 +1,7 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
 import gov.llnl.sonar.kafka.connect.readers.FileOffsetManager;
+import gov.llnl.sonar.kafka.connect.util.BackupUtil;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.config.Config;
@@ -50,10 +51,12 @@ public class DirectorySourceConnector extends SourceConnector {
             log.error("Exception:", e);
         }
 
-
-        // BackupUtil.createBackupTar(
-        //         Paths.get(config.getDirname()),
-        //         Paths.get(config.getCompletedDirname()));
+        if (config.getBackup()) {
+            log.info("Creating backup tarball for ingest directory {}", config.getDirname());
+            BackupUtil.createBackupTar(
+                    Paths.get(config.getDirname()),
+                    Paths.get(config.getCompletedDirname()));
+        }
     }
 
     @Override

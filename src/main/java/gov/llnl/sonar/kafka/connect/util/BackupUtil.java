@@ -1,7 +1,7 @@
 package gov.llnl.sonar.kafka.connect.util;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.compress.utils.IOUtils;
@@ -21,10 +21,8 @@ public class BackupUtil {
 
             Files.walk(source).filter(Files::isRegularFile).forEach(path -> {
                 try {
-                    // Create archive entry with relative path
-                    Path relativePath = path.relativize(source);
-                    ArchiveEntry archiveEntry = out.createArchiveEntry(path.toFile(), relativePath.toString());
-                    out.putArchiveEntry(archiveEntry);
+                    // Create archive entry with file
+                    out.putArchiveEntry(new TarArchiveEntry(path.toFile()));
 
                     // Write archive entry with file contents
                     InputStream i = Files.newInputStream(path);

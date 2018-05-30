@@ -1,7 +1,6 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
 import gov.llnl.sonar.kafka.connect.readers.DirectoryReader;
-import gov.llnl.sonar.kafka.connect.readers.FileReader;
 import gov.llnl.sonar.kafka.connect.util.OptionsParser;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +16,7 @@ import java.util.Map;
 @Slf4j
 public class DirectorySourceTask extends SourceTask {
 
-    private String taskid;
+    private String taskID;
     private static final String PARTITION_FIELD = "filename";
     private static final String OFFSET_FIELD = "line";
 
@@ -34,7 +33,7 @@ public class DirectorySourceTask extends SourceTask {
 
         DirectorySourceConfig config = new DirectorySourceConfig(map);
         try {
-            this.taskid = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
+            this.taskID = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
 
             String relativeDirname = config.getDirname();
             String completedDirname = config.getCompletedDirname();
@@ -59,10 +58,10 @@ public class DirectorySourceTask extends SourceTask {
                     config.getZooKeeperHost(),
                     config.getZooKeeperPort());
 
-            log.info("Task {}: Added ingestion directory {}", taskid, reader.getCanonicalDirname());
+            log.info("Task {}: Added ingestion directory {}", taskID, reader.getCanonicalDirname());
 
         } catch (Exception ex) {
-            log.error("Task {}: Exception:", taskid, ex);
+            log.error("Task {}: Exception:", taskID, ex);
             this.stop();
         }
     }
@@ -75,17 +74,17 @@ public class DirectorySourceTask extends SourceTask {
         try {
             Long numRecordsRead = reader.read(records, context);
             if (numRecordsRead > 0) {
-                log.info("Task {}: Read {} records from directory {}", taskid, numRecordsRead, reader.getCanonicalDirname());
+                log.info("Task {}: Read {} records from directory {}", taskID, numRecordsRead, reader.getCanonicalDirname());
                 return records;
             }
             else {
-                log.debug("Task {}: No records read from {}, sleeping for 1 second", taskid, reader.getCanonicalDirname());
+                log.debug("Task {}: No records read from {}, sleeping for 1 second", taskID, reader.getCanonicalDirname());
                 synchronized (this) {
                     this.wait(1000);
                 }
             }
         } catch (Exception ex) {
-            log.error("Task {}: Exception:", taskid, ex);
+            log.error("Task {}: Exception:", taskID, ex);
             synchronized (this) {
                 this.wait(1000);
             }
@@ -102,7 +101,7 @@ public class DirectorySourceTask extends SourceTask {
                     reader.close();
                 }
             } catch (Exception ex) {
-                log.error("Task {}: Exception:", taskid, ex);
+                log.error("Task {}: Exception:", taskID, ex);
             }
             this.notify();
         }

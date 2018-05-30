@@ -15,7 +15,7 @@ import java.util.Map;
 
 @Slf4j
 public class FileSourceTask extends SourceTask {
-    private String taskid;
+    private String taskID;
     private static final String PARTITION_FIELD = "filename";
     private static final String OFFSET_FIELD = "line";
 
@@ -31,7 +31,7 @@ public class FileSourceTask extends SourceTask {
 
         FileSourceConfig config = new FileSourceConfig(map);
         try {
-            this.taskid = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
+            this.taskID = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
 
             String relativeFilename = config.getFilename();
 
