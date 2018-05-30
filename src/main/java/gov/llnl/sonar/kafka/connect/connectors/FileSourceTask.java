@@ -8,6 +8,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 
 import java.io.File;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,10 +29,9 @@ public class FileSourceTask extends SourceTask {
     @Override
     public void start(Map<String, String> map) {
 
-        taskid = map.get("task.id");
-
         FileSourceConfig config = new FileSourceConfig(map);
         try {
+            this.taskid = InetAddress.getLocalHost().getHostName();
 
             String relativeFilename = config.getFilename();
 
@@ -43,7 +43,6 @@ public class FileSourceTask extends SourceTask {
             }
 
             reader = new FileReader(
-                    taskid,
                     relativeFilename,
                     config.getCompletedDirname(),
                     config.getTopic(),
@@ -53,8 +52,7 @@ public class FileSourceTask extends SourceTask {
                     OFFSET_FIELD,
                     config.getFormat(),
                     OptionsParser.optionsStringToMap(config.getFormat()),
-                    0L,
-                    null, null);
+                    0L);
 
         } catch (Exception ex) {
             log.error("Exception:", ex);

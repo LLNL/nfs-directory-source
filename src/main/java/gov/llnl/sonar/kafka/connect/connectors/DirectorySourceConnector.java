@@ -1,6 +1,6 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
-import gov.llnl.sonar.kafka.connect.util.BackupUtil;
+import gov.llnl.sonar.kafka.connect.readers.FileOffsetManager;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.config.Config;
@@ -9,8 +9,6 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceConnector;
 
-import java.io.IOException;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -19,16 +17,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static java.nio.file.StandardOpenOption.*;
 
 @Slf4j
 public class DirectorySourceConnector extends SourceConnector {
 
     private DirectorySourceConfig config;
-
-    private FileChannel pathWalkLockFile;
-
-    public final static String LOCK_FILENAME = ".directory-walker.lock";
+    private FileOffsetManager fileOffsetManager;
 
     @Override
     public String version() {
@@ -37,20 +31,25 @@ public class DirectorySourceConnector extends SourceConnector {
 
     @Override
     public void start(Map<String, String> props) {
+
+        // Make dirname absolute
+        Path absolutePath = Paths.get(props.get("dirname")).toAbsolutePath();
+        String absoluteDirname = absolutePath.toString();
+        props.put("dirname", absoluteDirname);
+
+        // Create new file offset manager in zookeeper (deleting if it exists)
+        try {
+            log.info("Creating file offset manager {}", absoluteDirname);
+            fileOffsetManager = new FileOffsetManager("rzsonar8:2181", absoluteDirname);
+        } catch (Exception e) {
+            log.error("Exception:", e);
+        }
+
         config = new DirectorySourceConfig(props);
 
         // BackupUtil.createBackupTar(
         //         Paths.get(config.getDirname()),
         //         Paths.get(config.getCompletedDirname()));
-
-        Path pathWalkLockPath = Paths.get(config.getCompletedDirname(), LOCK_FILENAME);
-
-        try {
-            pathWalkLockFile = FileChannel.open(pathWalkLockPath, READ, WRITE, CREATE_NEW, SYNC);
-        } catch (IOException e) {
-            log.info("Path lock file {} already created, using it", pathWalkLockPath.toString());
-            pathWalkLockFile = null;
-        }
     }
 
     @Override
@@ -62,23 +61,21 @@ public class DirectorySourceConnector extends SourceConnector {
     public List<Map<String, String>> taskConfigs(int maxTasks) {
         log.info("Creating {} directory source tasks", maxTasks);
 
-        List<Map<String, String>> configs = Collections.nCopies(maxTasks, config.originalsStrings());
+        Path absolutePath = Paths.get(config.getDirname()).toAbsolutePath();
 
-        for (int i=0; i<maxTasks; i++) {
-            configs.get(i).put("task.id", String.valueOf(i));
-        }
+        Map<String, String> configStrings = config.originalsStrings();
+        configStrings.put("zk.fileOffsetPath", absolutePath.toString());
 
-        return configs;
+        return new ArrayList<>(Collections.nCopies(maxTasks, configStrings));
     }
 
     @Override
     public void stop() {
         try {
-            if (pathWalkLockFile != null) {
-                pathWalkLockFile.close();
-            }
-        } catch (IOException e) {
-            log.error("IOException opening path lock file {}", pathWalkLockFile.toString(), e);
+            fileOffsetManager.delete();
+            fileOffsetManager.close();
+        } catch (Exception e) {
+            log.error("Exception:", e);
         }
     }
 
@@ -118,16 +115,6 @@ public class DirectorySourceConnector extends SourceConnector {
             for (ConfigValue cv : configValues) {
                 if (cv.name().equals("completed.dirname")) {
                     cv.addErrorMessage("Specified \"completed.dirname\" must: exist, be a directory, be writable and executable");
-                }
-            }
-        }
-
-        Path pathlockpath = Paths.get(completeddirname, ".directory-walker-lock");
-
-        if (Files.exists(pathlockpath)) {
-            for (ConfigValue cv : configValues) {
-                if (cv.name().equals("completed.dirname")) {
-                    cv.addErrorMessage("\"completed.dirname\" contains a path lock file (.directory-walker-lock), remove it or specify a new completed.dirname");
                 }
             }
         }

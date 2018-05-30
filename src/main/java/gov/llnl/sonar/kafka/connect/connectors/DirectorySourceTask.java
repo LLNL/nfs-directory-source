@@ -9,6 +9,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 
 import java.io.File;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -30,10 +31,11 @@ public class DirectorySourceTask extends SourceTask {
     @Override
     public void start(Map<String, String> map) {
 
-        taskid = map.get("task.id");
 
         DirectorySourceConfig config = new DirectorySourceConfig(map);
         try {
+            this.taskid = InetAddress.getLocalHost().getHostName();
+
             String relativeDirname = config.getDirname();
             String completedDirname = config.getCompletedDirname();
 
@@ -45,7 +47,6 @@ public class DirectorySourceTask extends SourceTask {
             }
 
             reader = new DirectoryReader(
-                    taskid,
                     relativeDirname,
                     completedDirname,
                     config.getTopic(),
@@ -56,11 +57,10 @@ public class DirectorySourceTask extends SourceTask {
                     config.getFormat(),
                     OptionsParser.optionsStringToMap(config.getFormatOptions()));
 
-            log.info("Added ingestion directory {}", reader.getCanonicalDirname());
+            log.info("Task {}: Added ingestion directory {}", taskid, reader.getCanonicalDirname());
 
         } catch (Exception ex) {
             log.error("Task {}: Exception:", taskid, ex);
-            log.error("Start failed, stopping task!");
             this.stop();
         }
     }
@@ -94,7 +94,6 @@ public class DirectorySourceTask extends SourceTask {
 
     @Override
     public void stop() {
-        log.debug("Task stopping");
         synchronized (this) {
             try {
                 if (reader != null) {

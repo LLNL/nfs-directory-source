@@ -1,6 +1,5 @@
 package gov.llnl.sonar.kafka.connect.readers;
 
-import gov.llnl.sonar.kafka.connect.connectors.DirectorySourceConnector;
 import gov.llnl.sonar.kafka.connect.exceptions.BreakException;
 
 import lombok.extern.slf4j.Slf4j;
@@ -9,17 +8,12 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
 
 import java.io.*;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import java.nio.channels.OverlappingFileLockException;
+import java.net.InetAddress;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Callable;
 
-import static java.nio.file.StandardOpenOption.*;
 
 @Slf4j
 public class DirectoryReader extends Reader {
@@ -40,10 +34,9 @@ public class DirectoryReader extends Reader {
 
     private FileReader currentFileReader;
 
-    Map<String, Long> currentOffsets = new HashMap<String, Long>();
+    FileOffsetManager fileOffsetManager;
 
-    public DirectoryReader(String taskid,
-                           String dirname,
+    public DirectoryReader(String dirname,
                            String completedDirectoryName,
                            String topic,
                            org.apache.avro.Schema avroSchema,
@@ -54,7 +47,7 @@ public class DirectoryReader extends Reader {
                            Map<String, Object> formatOptions)
         throws IOException {
 
-        this.taskid = taskid;
+        this.taskid = InetAddress.getLocalHost().getHostName();
         this.completedDirectoryName = completedDirectoryName;
         this.topic = topic;
         this.avroSchema = avroSchema;
@@ -77,101 +70,93 @@ public class DirectoryReader extends Reader {
         if (!isFolder) {
             throw new IOException(canonicalDirname + " is not a directory!");
         }
+
+        try {
+            this.fileOffsetManager = new FileOffsetManager("rzsonar8:2181", dirname);
+        } catch (Exception e) {
+            log.error("Task {}: {}", taskid, e);
+        }
     }
 
-    private <T> T superLock(Callable<T> fn) {
+    private synchronized <T> T fileOffsetLockedFunction(Callable<T> fn) {
 
+        // Synchronize this block over all threads in the JVM
         synchronized (DirectoryReader.class) {
 
-            int numRetries = 100;
-
-            // Get a process-wide lock for this function
-            Path pathWalkLockFile = Paths.get(completedDirectoryName, DirectorySourceConnector.LOCK_FILENAME);
-            FileLock pathWalkLock = null;
-            while (numRetries >= 0) {
-                try {
-                    pathWalkLock = FileChannel.open(pathWalkLockFile, READ, WRITE, SYNC).tryLock();
-                    break;
-                } catch (OverlappingFileLockException e) {
-                    try {
-                        numRetries--;
-                        this.wait(100);
-                    } catch (InterruptedException e1) {
-                        return null;
-                    }
-                } catch (IOException e) {
-                    log.error("Task {}: IOException:", taskid, e);
-                    return null;
-                }
-            }
-
-            if (pathWalkLock == null) {
+            // Lock the file offset manager
+            if (!fileOffsetManager.lock()) {
+                log.info("Task {}: FileOffsetManager failed to acquire lock", taskid);
                 return null;
             }
 
-            log.info("Task {}: PathWalker lock acquired", taskid);
+            log.info("Task {}: FileOffsetManager lock acquired", taskid);
 
+            // Download the file offset map
+            try {
+                fileOffsetManager.download();
+            } catch (EOFException e) {
+                // empty file offset map, that's ok
+            } catch (Exception e) {
+                log.error("Task {}: {}", taskid, e);
+            }
+            log.info("Task {}: Downloaded file offset map {}", taskid, fileOffsetManager.getOffsetMap());
+
+            // Run the function
             T result = null;
             try {
                  result = fn.call();
             } catch (Exception e) {
-                log.error("Task {}: Exception:", taskid, e);
+                log.error("Task {}: {}", taskid, e);
             }
 
+            // Upload the file offset map
+            log.info("Task {}: Uploading file offset map {}", taskid, fileOffsetManager.getOffsetMap());
             try {
-                pathWalkLock.release();
-                log.info("Task {}: PathWalker lock released", taskid);
-            } catch (IOException e) {
-                log.error("Task {}: IOException:", taskid, e);
+                fileOffsetManager.upload();
+            } catch (Exception e) {
+                log.error("Task {}: {}", taskid, e);
+            }
+
+            // Unlock the file offset manager
+            if (!fileOffsetManager.unlock()) {
+                log.info("Task {}: FileOffsetManager failed to release lock", taskid);
             }
 
             return result;
         }
     }
 
-    private FileReader getNextFileReader() {
+    /** MUST BE CALLED IN fileOffsetLockedFunction */
+    private synchronized FileReader getNextFileReader() {
 
-        Iterator<Path> pathWalker;
-        FileLock fileLock;
         try {
-            pathWalker = Files.walk(dirPath).filter(Files::isRegularFile).iterator();
+
+            Iterator<Path> pathWalker = Files.walk(dirPath).filter(Files::isRegularFile).iterator();
+            HashMap<String, FileOffset> fileOffsetMap = fileOffsetManager.getOffsetMap();
 
             while (pathWalker.hasNext()) {
-                Path p = pathWalker.next();
 
-                try {
-                    // Check the path
-                    log.debug("Task {}: Checking path for {}", taskid, p.toString());
-                    p = p.toRealPath();
-                    String pathString = p.toString();
+                Path p = pathWalker.next().toAbsolutePath();
 
-                    // Lock the file
-                    Path lockFilePath = Paths.get(completedDirectoryName,"." + p.getFileName() + ".lock");
+                // Get offset from file offset map if it exists
+                final FileOffset offset;
+                if (fileOffsetMap.containsKey(p.toString())) {
+                    offset = fileOffsetMap.get(p.toString());
+                } else {
+                    offset = new FileOffset(0L, false, false);
+                }
 
-                    fileLock = FileChannel.open(lockFilePath, READ, WRITE, CREATE, SYNC).tryLock();
-                    log.info("Task {}: Created lock file {}", taskid, lockFilePath.toString());
+                // If not locked or completed, lock it and create a reader
+                if (!offset.locked && !offset.completed) {
 
-                    if (fileLock != null && fileLock.isValid()) {
+                    // Lock file and publish offset to map
+                    offset.setLocked(true);
+                    fileOffsetMap.put(p.toString(), offset);
+                    fileOffsetManager.setOffsetMap(fileOffsetMap);
 
-                        log.info("Task {}: Acquired lock on file {}", taskid, lockFilePath.toString());
-
-                        // We may have gotten the lock AFTER the file was moved
-                        if (Files.notExists(p)) {
-                            fileLock.release();
-                            log.info("Task {}: File doesn't exist! Released lock file {}", taskid, lockFilePath);
-                            throw new NoSuchFileException(String.format("File %s does not exist!", pathString));
-                        }
-
-                        // Check if we have an offset stored
-                        Long fileOffset = 0L;
-                        if (currentOffsets.containsKey(pathString)) {
-                            fileOffset = currentOffsets.get(pathString);
-                        }
-
-                        // Lock acquired and file exists!
+                    try {
                         return new FileReader(
-                                taskid,
-                                pathString,
+                                p,
                                 completedDirectoryName,
                                 topic,
                                 avroSchema,
@@ -180,28 +165,37 @@ public class DirectoryReader extends Reader {
                                 offsetField,
                                 format,
                                 formatOptions,
-                                fileOffset,
-                                fileLock.channel(),
-                                fileLock);
+                                offset.offset);
+                    } catch (Exception e) {
+                        log.info("Task {}: Exception:", taskid, e);
                     }
-                } catch (OverlappingFileLockException e) {
-                    log.info("Task {}: File {} locked, continuing...", taskid, p.toString());
-                } catch (NoSuchFileException e) {
-                    log.info("Task {}: NoSuchFileException:", taskid, e);
-                } catch (IOException e) {
-                    log.debug("Probably a stale file handle, resetting...");
                 }
             }
         } catch (UncheckedIOException e) {
-            log.debug("PathWalker stale, resetting...");
+            log.info("Task {}: UncheckedIOException", taskid, e);
         } catch (IOException e) {
-            // nothing important
+            log.info("Task {}: IOException", taskid, e);
         }
         return null;
     }
 
-    private int purgeCurrentFileReader() {
-        currentFileReader.purgeFile();
+    /** MUST BE CALLED IN fileOffsetLockedFunction */
+    private synchronized int updateFileOffsets() {
+
+        HashMap<String, FileOffset> fileOffsetMap = fileOffsetManager.getOffsetMap();
+
+        // Unlock file offset and publish
+        fileOffsetMap.put(currentFileReader.getPath().toString(),
+                new FileOffset(currentFileReader.getCurrentOffset(), false, currentFileReader.ingestCompleted));
+
+        // Purge the file if completed
+        if (currentFileReader.ingestCompleted) {
+            currentFileReader.purgeFile();
+            currentFileReader = null;
+        }
+
+        fileOffsetManager.setOffsetMap(fileOffsetMap);
+
         return 0;
     }
 
@@ -220,7 +214,7 @@ public class DirectoryReader extends Reader {
                     throw new BreakException();
                 }
 
-                currentFileReader = superLock(this::getNextFileReader);
+                currentFileReader = fileOffsetLockedFunction(this::getNextFileReader);
 
                 if (currentFileReader == null) {
                     log.debug("All files either locked or processed, exiting currentFileReader loop");
@@ -229,22 +223,18 @@ public class DirectoryReader extends Reader {
 
                 try {
 
-                    log.info("Task {}: Ingesting file {}", taskid, currentFileReader.getCanonicalFilename());
+                    log.info("Task {}: Ingesting file {}", taskid, currentFileReader.getPath());
                     Long numRecordsFile = currentFileReader.read(records, context);
-                    log.info("Task {}: Read {} records from file {}", taskid, numRecordsFile, currentFileReader.getCanonicalFilename());
+                    log.info("Task {}: Read {} records from file {}", taskid, numRecordsFile, currentFileReader.getPath());
                     currentFileReader.close();
 
-                    currentOffsets.put(currentFileReader.getFilename(), currentFileReader.getCurrentOffset());
-
-                    if (currentFileReader.ingestCompleted) {
-                        superLock(this::purgeCurrentFileReader);
-                    }
+                    fileOffsetLockedFunction(this::updateFileOffsets);
 
                     filesRead += 1;
                     numRecords += numRecordsFile;
 
                 } catch (Exception e) {
-                    log.error("Task {}: Exception:", taskid, e);
+                    log.error("Task {}: {}", taskid, e);
                 }
             }
         } catch (BreakException b) {
@@ -260,13 +250,16 @@ public class DirectoryReader extends Reader {
 
     @Override
     public synchronized void close() {
-        log.debug("Interrupting reader");
         breakAndClose.set(true);
         notifyAll();
         if (currentFileReader != null) {
             currentFileReader.close();
         }
-        log.debug("Closed");
+        try {
+            fileOffsetManager.close();
+        } catch (Exception e) {
+            log.error("Task {}: {}", taskid, e);
+        }
     }
 
 }
