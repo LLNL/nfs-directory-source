@@ -76,7 +76,6 @@ public class FileReader extends Reader {
                 // TODO: handle name collisions /dir/foo/file1 /dir/bar/file1
                 this.completedFilePath = Paths.get(completedDirectoryName,path + ".COMPLETED");
 
-                // Now that we have the lock, make sure the file still exists
                 if (Files.notExists(path)) {
                     throw new NoSuchFileException(String.format("File %s does not exist!", path));
                 }
@@ -109,10 +108,10 @@ public class FileReader extends Reader {
             log.info("Task {}: Purging ingested file {}", taskID, path);
             Files.move(path, completedFilePath, ATOMIC_MOVE);
         } catch (NoSuchFileException | FileAlreadyExistsException e) {
-            log.debug("File {} already purged");
+            log.info("Task {}: File {} already purged", taskID, path);
         } catch(IOException e) {
             log.error("Task {}: Error moving ingested file {}", taskID, path);
-            log.error("Task {}: IOException:", taskID, e);
+            log.error("Task {}: {}", taskID, e);
         }
         close();
     }
@@ -121,14 +120,9 @@ public class FileReader extends Reader {
     public synchronized Long read(List<SourceRecord> records, SourceTaskContext context)
             throws FileLockedException {
 
-        // TODO: filechannel can get closed after this ?!
         if (ingestCompleted) {
             return 0L;
         }
-
-        // if (currentOffset == 0L) {
-        //     currentOffset = ConnectUtil.getStreamOffset(context, partitionField, offsetField, path);
-        // }
 
         // Skip to offset
         try {
@@ -141,7 +135,7 @@ public class FileReader extends Reader {
             close();
             return 0L;
         } catch (IOException e) {
-            log.error("Task {}: Task {}: IOException", taskID, taskID, e);
+            log.error("Task {}: {}", taskID, e);
         }
 
         // Do the read
@@ -173,10 +167,13 @@ public class FileReader extends Reader {
                 log.info("Task {}: Ingest from file {} complete!", taskID, path);
                 close();
             } catch (Exception e) {
-                log.error("Task {}: Exception:", taskID, e);
+                log.error("Task {}: {}", taskID, e);
             }
 
         }
+
+        log.info("Task {}: Read {} records from file {}", taskID, i, path);
+
         return i;
     }
 
@@ -194,7 +191,7 @@ public class FileReader extends Reader {
         try {
             streamParser.close();
         } catch (Exception ex) {
-            log.error("Task {}: Exception:", taskID, ex);
+            log.error("Task {}: {}", taskID, ex);
         }
     }
 }

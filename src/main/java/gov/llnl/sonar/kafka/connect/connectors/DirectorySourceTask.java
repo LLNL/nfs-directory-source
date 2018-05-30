@@ -61,7 +61,7 @@ public class DirectorySourceTask extends SourceTask {
             log.info("Task {}: Added ingestion directory {}", taskID, reader.getCanonicalDirname());
 
         } catch (Exception ex) {
-            log.error("Task {}: Exception:", taskID, ex);
+            log.error("Task {}: {}", taskID, ex);
             this.stop();
         }
     }
@@ -84,7 +84,7 @@ public class DirectorySourceTask extends SourceTask {
                 }
             }
         } catch (Exception ex) {
-            log.error("Task {}: Exception:", taskID, ex);
+            log.error("Task {}: {}", taskID, ex);
             synchronized (this) {
                 this.wait(1000);
             }
@@ -101,7 +101,7 @@ public class DirectorySourceTask extends SourceTask {
                     reader.close();
                 }
             } catch (Exception ex) {
-                log.error("Task {}: Exception:", taskID, ex);
+                log.error("Task {}: {}", taskID, ex);
             }
             this.notify();
         }

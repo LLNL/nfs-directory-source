@@ -86,11 +86,11 @@ public class DirectoryReader extends Reader {
 
             // Lock the file offset manager
             if (!fileOffsetManager.lock()) {
-                log.info("Task {}: FileOffsetManager failed to acquire lock", taskID);
+                log.debug("Task {}: FileOffsetManager failed to acquire lock", taskID);
                 return null;
             }
 
-            log.info("Task {}: FileOffsetManager lock acquired", taskID);
+            log.debug("Task {}: FileOffsetManager lock acquired", taskID);
 
             // Download the file offset map
             try {
@@ -100,7 +100,7 @@ public class DirectoryReader extends Reader {
             } catch (Exception e) {
                 log.error("Task {}: {}", taskID, e);
             }
-            log.info("Task {}: Downloaded file offset map {}", taskID, fileOffsetManager.getOffsetMap());
+            log.debug("Task {}: Downloaded file offset map {}", taskID, fileOffsetManager.getOffsetMap());
 
             // Run the function
             T result = null;
@@ -111,7 +111,7 @@ public class DirectoryReader extends Reader {
             }
 
             // Upload the file offset map
-            log.info("Task {}: Uploading file offset map {}", taskID, fileOffsetManager.getOffsetMap());
+            log.debug("Task {}: Uploading file offset map {}", taskID, fileOffsetManager.getOffsetMap());
             try {
                 fileOffsetManager.upload();
             } catch (Exception e) {
@@ -120,7 +120,7 @@ public class DirectoryReader extends Reader {
 
             // Unlock the file offset manager
             if (!fileOffsetManager.unlock()) {
-                log.info("Task {}: FileOffsetManager failed to release lock", taskID);
+                log.debug("Task {}: FileOffsetManager failed to release lock", taskID);
             }
 
             return result;
@@ -168,14 +168,12 @@ public class DirectoryReader extends Reader {
                                 formatOptions,
                                 offset.offset);
                     } catch (Exception e) {
-                        log.info("Task {}: Exception:", taskID, e);
+                        log.error("Task {}: {}", taskID, e);
                     }
                 }
             }
-        } catch (UncheckedIOException e) {
-            log.info("Task {}: UncheckedIOException", taskID, e);
-        } catch (IOException e) {
-            log.info("Task {}: IOException", taskID, e);
+        } catch (IOException | UncheckedIOException e) {
+            log.error("Task {}: {}", taskID, e);
         }
         return null;
     }
@@ -225,9 +223,7 @@ public class DirectoryReader extends Reader {
 
                 try {
 
-                    log.info("Task {}: Ingesting file {}", taskID, currentFileReader.getPath());
                     Long numRecordsFile = currentFileReader.read(records, context);
-                    log.info("Task {}: Read {} records from file {}", taskID, numRecordsFile, currentFileReader.getPath());
                     currentFileReader.close();
 
                     fileOffsetLockedFunction(this::updateFileOffsets);
