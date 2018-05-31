@@ -9,6 +9,7 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceConnector;
 
+import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -18,6 +19,7 @@ import java.util.*;
 @Slf4j
 public class DirectorySourceConnector extends SourceConnector {
 
+    private String taskID;
     private DirectorySourceConfig config;
     private FileOffsetManager fileOffsetManager;
 
@@ -30,22 +32,19 @@ public class DirectorySourceConnector extends SourceConnector {
     public void start(Map<String, String> props) {
 
         // Make dirname absolute
-        Path absolutePath = Paths.get(props.get("dirname")).toAbsolutePath();
+        Path absolutePath = Paths.get(props.get(DirectorySourceConfig.DIRNAME)).toAbsolutePath();
         String absoluteDirname = absolutePath.toString();
-        props.put("dirname", absoluteDirname);
+        props.put(DirectorySourceConfig.DIRNAME, absoluteDirname);
 
         config = new DirectorySourceConfig(props);
 
         try {
-            // Create new file offset manager in zookeeper
-            fileOffsetManager = new FileOffsetManager(
-                    config.getZooKeeperHost(),
-                    config.getZooKeeperPort(),
-                    config.getDirname());
+            // Get task ID
+            this.taskID = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
+            log.info("Connector task {}: Start", taskID);
         } catch (Exception e) {
             log.error("Exception:", e);
         }
-
     }
 
     @Override
@@ -55,7 +54,7 @@ public class DirectorySourceConnector extends SourceConnector {
 
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
-        log.info("Creating {} directory source tasks", maxTasks);
+        log.info("Connector task {}: Creating {} directory source tasks", taskID, maxTasks);
 
         Path absolutePath = Paths.get(config.getDirname()).toAbsolutePath();
 
@@ -67,11 +66,7 @@ public class DirectorySourceConnector extends SourceConnector {
 
     @Override
     public void stop() {
-        try {
-            fileOffsetManager.close();
-        } catch (Exception e) {
-            log.error("Exception:", e);
-        }
+        log.info("Connector task {}: Stop", taskID);
     }
 
     @Override
@@ -86,7 +81,7 @@ public class DirectorySourceConnector extends SourceConnector {
         List<ConfigValue> configValues = c.configValues();
 
         // Must have valid dir
-        String dirname = connectorConfigs.get("dirname");
+        String dirname = connectorConfigs.get(DirectorySourceConfig.DIRNAME);
         Path dirpath = Paths.get(dirname);
 
         if (!(  Files.exists(dirpath) &&
@@ -94,13 +89,13 @@ public class DirectorySourceConnector extends SourceConnector {
                 Files.isReadable(dirpath) &&
                 Files.isExecutable(dirpath))) {
             for (ConfigValue cv : configValues) {
-                if (cv.name().equals("dirname")) {
-                    cv.addErrorMessage("Specified \"dirname\" must: exist, be a directory, be readable and executable");
+                if (cv.name().equals(DirectorySourceConfig.DIRNAME)) {
+                    cv.addErrorMessage("Specified \"" + DirectorySourceConfig.DIRNAME +  "\" must: exist, be a directory, be readable and executable");
                 }
             }
         }
 
-        String completeddirname = connectorConfigs.get("completed.dirname");
+        String completeddirname = connectorConfigs.get(DirectorySourceConfig.COMPLETED_DIRNAME);
         Path completeddirpath = Paths.get(completeddirname);
 
         if (!(  Files.exists(completeddirpath) &&
@@ -108,20 +103,40 @@ public class DirectorySourceConnector extends SourceConnector {
                 Files.isWritable(completeddirpath) &&
                 Files.isExecutable(completeddirpath))) {
             for (ConfigValue cv : configValues) {
-                if (cv.name().equals("completed.dirname")) {
-                    cv.addErrorMessage("Specified \"completed.dirname\" must: exist, be a directory, be writable and executable");
+                if (cv.name().equals(DirectorySourceConfig.COMPLETED_DIRNAME)) {
+                    cv.addErrorMessage("Specified \"" + DirectorySourceConfig.DIRNAME + "\" must: exist, be a directory, be writable and executable");
                 }
             }
         }
 
         // Must have avro.schema or avro.schema.filename
-        if (connectorConfigs.containsKey("avro.schema") == connectorConfigs.containsKey("avro.schema.filename")) {
+        if (connectorConfigs.containsKey(DirectorySourceConfig.AVRO_SCHEMA) == connectorConfigs.containsKey(DirectorySourceConfig.AVRO_SCHEMA_FILENAME)) {
             for (ConfigValue cv : configValues) {
-                if (cv.name().equals("avro.schema")) {
-                    cv.addErrorMessage("Connector requires either avro.schema or avro.schema.filename (and not both)!");
+                if (cv.name().equals(DirectorySourceConfig.AVRO_SCHEMA)) {
+                    cv.addErrorMessage("Connector requires either \"" + DirectorySourceConfig.AVRO_SCHEMA + "\" or \"" + DirectorySourceConfig.AVRO_SCHEMA_FILENAME + "\" (and not both)!");
                 }
             }
         }
+
+        // Hacking into here since this runs only once when a connector is started
+        try {
+            log.info("{}: creating file offset manager", this.getClass());
+
+            // Get configs
+            Path absolutePath = Paths.get(connectorConfigs.get(DirectorySourceConfig.DIRNAME)).toAbsolutePath();
+            String absoluteDirname = absolutePath.toString();
+            String zooKeeperHost = connectorConfigs.get(DirectorySourceConfig.ZKHOST);
+            String zooKeeperPort = connectorConfigs.get(DirectorySourceConfig.ZKPORT);
+
+            // Create new file offset manager in zookeeper with empty offset map
+            fileOffsetManager = new FileOffsetManager(zooKeeperHost, zooKeeperPort, absoluteDirname);
+            fileOffsetManager.setOffsetMap(new HashMap<>());
+            fileOffsetManager.upload();
+            fileOffsetManager.close();
+        } catch (Exception e) {
+            log.error("Exception:", e);
+        }
+
 
         return new Config(configValues);
     }

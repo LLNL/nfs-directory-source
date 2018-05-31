@@ -4,8 +4,6 @@ import gov.llnl.sonar.kafka.connect.exceptions.BreakException;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang3.SerializationException;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
 
