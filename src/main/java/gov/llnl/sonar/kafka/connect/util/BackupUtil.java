@@ -9,12 +9,14 @@ import org.apache.commons.compress.utils.IOUtils;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Slf4j
 public class BackupUtil {
     static public void createBackupTar(Path source, Path destination) {
         try {
-            OutputStream fo = new FileOutputStream(destination.toString() + ".bak.tar.gz");
+            String compressedFilename = Paths.get(destination.toString(), source.getFileName() + ".bak.tar.gz").toString();
+            OutputStream fo = new FileOutputStream(compressedFilename);
             OutputStream gzo = new GzipCompressorOutputStream(fo);
 
             TarArchiveOutputStream out = new TarArchiveOutputStream(gzo);
@@ -22,6 +24,7 @@ public class BackupUtil {
             Files.walk(source).filter(Files::isRegularFile).forEach(path -> {
                 try {
                     // Create archive entry with file
+                    path.relativize(source);
                     out.putArchiveEntry(new TarArchiveEntry(path.toFile()));
 
                     // Write archive entry with file contents
@@ -36,6 +39,7 @@ public class BackupUtil {
             });
 
             out.finish();
+            out.close();
         } catch (FileNotFoundException e) {
             log.error("FileNotFoundException:", e);
         } catch (IOException e) {
