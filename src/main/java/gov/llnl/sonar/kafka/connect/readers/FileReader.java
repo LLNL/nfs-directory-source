@@ -16,6 +16,7 @@ import java.nio.file.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 
@@ -107,6 +108,8 @@ public class FileReader extends Reader {
         try {
             log.debug("Task {}: Purging ingested file {}", taskID, path);
             Files.move(path, completedFilePath);
+        } catch (NoSuchFileException | FileAlreadyExistsException e) {
+            // do nothing
         } catch(IOException e) {
             log.error("Task {}: Error moving ingested file {}", taskID, path);
             log.error("Task {}: {}", taskID, e);

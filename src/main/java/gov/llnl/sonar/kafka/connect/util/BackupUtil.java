@@ -24,12 +24,7 @@ public class BackupUtil {
             Files.walk(source).filter(Files::isRegularFile).forEach(path -> {
                 try {
                     // Create archive entry with file
-                    out.putArchiveEntry(
-                            new TarArchiveEntry(
-                                    path.toFile(),
-                                    path.relativize(source.getParent()).normalize().toString()
-                            )
-                    );
+                    out.putArchiveEntry(new TarArchiveEntry(path.toFile()));
 
                     // Write archive entry with file contents
                     InputStream i = Files.newInputStream(path);
@@ -44,7 +39,6 @@ public class BackupUtil {
             });
 
             out.finish();
-            out.flush();
             out.close();
         } catch (FileNotFoundException e) {
             log.error("FileNotFoundException:", e);
