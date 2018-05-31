@@ -30,7 +30,6 @@ public class DirectorySourceTask extends SourceTask {
     @Override
     public void start(Map<String, String> map) {
 
-
         DirectorySourceConfig config = new DirectorySourceConfig(map);
         try {
             this.taskID = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";

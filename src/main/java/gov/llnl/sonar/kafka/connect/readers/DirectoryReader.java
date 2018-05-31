@@ -4,6 +4,8 @@ import gov.llnl.sonar.kafka.connect.exceptions.BreakException;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.commons.lang3.SerializationException;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
 
@@ -95,8 +97,6 @@ public class DirectoryReader extends Reader {
             // Download the file offset map
             try {
                 fileOffsetManager.download();
-            } catch (EOFException e) {
-                // empty file offset map, that's ok
             } catch (Exception e) {
                 log.error("Task {}: {}", taskID, e);
             }

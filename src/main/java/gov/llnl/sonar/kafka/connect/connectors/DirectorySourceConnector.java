@@ -13,10 +13,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 @Slf4j
@@ -40,13 +37,16 @@ public class DirectorySourceConnector extends SourceConnector {
 
         config = new DirectorySourceConfig(props);
 
-        // Create new file offset manager in zookeeper (deleting if it exists)
         try {
-            log.info("Creating file offset manager {}", config.getDirname());
+            // Create new file offset manager in zookeeper
             fileOffsetManager = new FileOffsetManager(
                     config.getZooKeeperHost(),
                     config.getZooKeeperPort(),
                     config.getDirname());
+
+            // Start with empty offset map
+            fileOffsetManager.setOffsetMap(new HashMap<>());
+            fileOffsetManager.upload();
         } catch (Exception e) {
             log.error("Exception:", e);
         }

@@ -74,7 +74,7 @@ public class FileReader extends Reader {
         while (!breakAndClose.get()) {
             try {
                 // TODO: handle name collisions /dir/foo/file1 /dir/bar/file1
-                this.completedFilePath = Paths.get(completedDirectoryName,path + ".COMPLETED");
+                this.completedFilePath = Paths.get(completedDirectoryName,path.getFileName() + ".COMPLETED");
 
                 if (Files.notExists(path)) {
                     throw new NoSuchFileException(String.format("File %s does not exist!", path));
@@ -100,15 +100,13 @@ public class FileReader extends Reader {
             }
         }
 
-        log.info("Task {}: Added ingestion file {}", taskID, path);
+        log.debug("Task {}: Added ingestion file {}", taskID, path);
     }
 
     public void purgeFile() {
         try {
-            log.info("Task {}: Purging ingested file {}", taskID, path);
-            Files.move(path, completedFilePath, ATOMIC_MOVE);
-        } catch (NoSuchFileException | FileAlreadyExistsException e) {
-            log.info("Task {}: File {} already purged", taskID, path);
+            log.debug("Task {}: Purging ingested file {}", taskID, path);
+            Files.move(path, completedFilePath);
         } catch(IOException e) {
             log.error("Task {}: Error moving ingested file {}", taskID, path);
             log.error("Task {}: {}", taskID, e);
@@ -126,12 +124,12 @@ public class FileReader extends Reader {
 
         // Skip to offset
         try {
-            log.info("Task {}: Reading from file {} line {}", taskID, path, currentOffset);
+            log.debug("Task {}: Reading from file {} line {}", taskID, path, currentOffset);
             streamParser.seekToLine(currentOffset);
         } catch (EOFException | FileNotFoundException e) {
             ingestCompleted = true;
             currentOffset = -1L;
-            log.info("Task {}: Ingest from file {} complete!", taskID, path);
+            log.debug("Task {}: Ingest from file {} complete!", taskID, path);
             close();
             return 0L;
         } catch (IOException e) {
@@ -164,7 +162,7 @@ public class FileReader extends Reader {
             } catch (EOFException e) {
                 ingestCompleted = true;
                 currentOffset = -1L;
-                log.info("Task {}: Ingest from file {} complete!", taskID, path);
+                log.debug("Task {}: Ingest from file {} complete!", taskID, path);
                 close();
             } catch (Exception e) {
                 log.error("Task {}: {}", taskID, e);
@@ -172,7 +170,7 @@ public class FileReader extends Reader {
 
         }
 
-        log.info("Task {}: Read {} records from file {}", taskID, i, path);
+        log.debug("Task {}: Read {} records from file {}", taskID, i, path);
 
         return i;
     }

@@ -1,7 +1,9 @@
 package gov.llnl.sonar.kafka.connect.readers;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.SerializationException;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.locks.InterProcessLock;
@@ -9,6 +11,8 @@ import org.apache.curator.framework.recipes.locks.InterProcessMutex;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.*;
 
+import java.io.EOFException;
+import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -59,7 +63,16 @@ public class FileOffsetManager {
 
     public void download() throws Exception {
         byte[] fileOffsetMapBytes = client.getData().forPath(zooKeeperPath);
-        fileOffsetMap = SerializationUtils.deserialize(fileOffsetMapBytes);
+
+        try {
+            fileOffsetMap = SerializationUtils.deserialize(fileOffsetMapBytes);
+        } catch (SerializationException e) {
+            if (ExceptionUtils.getRootCause(e) instanceof EOFException) {
+                // empty file offset map, that's ok
+            } else {
+                throw e;
+            }
+        }
     }
 
     public void delete() throws Exception {
@@ -68,8 +81,8 @@ public class FileOffsetManager {
 
             lock();
 
-            if (client.checkExists().forPath(zooKeeperPath) == null) {
-                client.delete().forPath(zooKeeperPath);
+            if (client.checkExists().forPath(zooKeeperPath) != null) {
+                client.delete().deletingChildrenIfNeeded().forPath(zooKeeperPath);
             }
 
             unlock();
@@ -86,7 +99,8 @@ public class FileOffsetManager {
 
     public boolean lock() {
         try {
-            return lock.acquire(1, TimeUnit.SECONDS);
+            lock.acquire();
+            return true;
         } catch (Exception e) {
             log.error("Exception:", e);
         }
