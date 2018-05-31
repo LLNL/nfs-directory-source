@@ -16,18 +16,19 @@ public class BackupUtil {
     static public void createBackupTar(Path source, Path destination) {
         try {
             String compressedFilename = Paths.get(destination.toString(), source.getFileName() + ".bak.tar.gz").toString();
+
             OutputStream fo = new FileOutputStream(compressedFilename);
             OutputStream gzo = new GzipCompressorOutputStream(fo);
-
             TarArchiveOutputStream out = new TarArchiveOutputStream(gzo);
 
             Files.walk(source).filter(Files::isRegularFile).forEach(path -> {
                 try {
                     // Create archive entry with file
-                    out.putArchiveEntry(new TarArchiveEntry(path.toFile()));
+                    File file = path.toFile();
+                    out.putArchiveEntry(new TarArchiveEntry(file, file.getName()));
 
                     // Write archive entry with file contents
-                    InputStream i = Files.newInputStream(path);
+                    InputStream i = new FileInputStream(file);
                     IOUtils.copy(i, out);
                     i.close();
 

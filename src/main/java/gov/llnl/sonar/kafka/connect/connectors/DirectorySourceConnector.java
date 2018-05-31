@@ -1,7 +1,6 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
 import gov.llnl.sonar.kafka.connect.readers.FileOffsetManager;
-import gov.llnl.sonar.kafka.connect.util.BackupUtil;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.config.Config;
@@ -43,20 +42,10 @@ public class DirectorySourceConnector extends SourceConnector {
                     config.getZooKeeperHost(),
                     config.getZooKeeperPort(),
                     config.getDirname());
-
-            // Start with empty offset map
-            fileOffsetManager.setOffsetMap(new HashMap<>());
-            fileOffsetManager.upload();
         } catch (Exception e) {
             log.error("Exception:", e);
         }
 
-        if (config.getBackup()) {
-            log.info("Creating backup tarball for ingest directory {}", config.getDirname());
-            BackupUtil.createBackupTar(
-                    Paths.get(config.getDirname()),
-                    Paths.get(config.getCompletedDirname()));
-        }
     }
 
     @Override
@@ -79,7 +68,6 @@ public class DirectorySourceConnector extends SourceConnector {
     @Override
     public void stop() {
         try {
-            fileOffsetManager.delete();
             fileOffsetManager.close();
         } catch (Exception e) {
             log.error("Exception:", e);

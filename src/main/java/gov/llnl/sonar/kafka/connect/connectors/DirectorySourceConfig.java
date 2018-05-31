@@ -16,10 +16,6 @@ public class DirectorySourceConfig extends AbstractConfig {
         this(conf(), parsedConfig);
     }
 
-    public static final String ZKHOST = "zk.host";
-    public static final String ZKHOST_DOC = "ZooKeeper hostname";
-    public static final String ZKPORT = "zk.port";
-    public static final String ZKPORT_DOC = "ZooKeeper port";
 
     public static final String DIRNAME = "dirname";
     public static final String DIRNAME_DOC = "The directory to read from.";
@@ -48,8 +44,10 @@ public class DirectorySourceConfig extends AbstractConfig {
     public static final String AVRO_SCHEMA_FILENAME_DOC = "Avro schema filename.";
     public static final String BATCH_SIZE = "batch.size";
     public static final String BATCH_SIZE_DOC = "Number of lines to read/ingest at a time from the file.";
-    public static final String BACKUP = "backup";
-    public static final String BACKUP_DOC = "Whether to create a backup tarball of the ingest directory before ingesting";
+    public static final String ZKHOST = "zk.host";
+    public static final String ZKHOST_DOC = "ZooKeeper hostname";
+    public static final String ZKPORT = "zk.port";
+    public static final String ZKPORT_DOC = "ZooKeeper port";
 
     public static ConfigDef conf() {
         return new ConfigDef()
@@ -63,7 +61,6 @@ public class DirectorySourceConfig extends AbstractConfig {
                 .define(AVRO_SCHEMA, Type.STRING, "", Importance.HIGH, AVRO_SCHEMA_DOC)
                 .define(AVRO_SCHEMA_FILENAME, Type.STRING, "", Importance.HIGH, AVRO_SCHEMA_FILENAME_DOC)
                 .define(BATCH_SIZE, Type.LONG, 1000L, Importance.HIGH, BATCH_SIZE_DOC)
-                .define(BACKUP, Type.BOOLEAN, false, Importance.HIGH, BACKUP_DOC)
                 ;
     }
 
@@ -77,6 +74,5 @@ public class DirectorySourceConfig extends AbstractConfig {
     public String getAvroSchema() { return this.getString(AVRO_SCHEMA); }
     public String getAvroSchemaFilename() { return this.getString(AVRO_SCHEMA_FILENAME); }
     public Long getBatchSize() { return this.getLong(BATCH_SIZE); }
-    public boolean getBackup() { return this.getBoolean(BACKUP); }
 }
 
