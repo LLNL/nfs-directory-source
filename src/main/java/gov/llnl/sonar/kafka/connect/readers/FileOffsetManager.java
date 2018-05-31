@@ -12,9 +12,7 @@ import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.*;
 
 import java.io.EOFException;
-import java.net.InetAddress;
 import java.util.HashMap;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class FileOffsetManager {
@@ -117,7 +115,7 @@ public class FileOffsetManager {
         return false;
     }
 
-    public void close() throws Exception {
+    public void close() {
         if (lock.isAcquiredInThisProcess()) {
             unlock();
         }

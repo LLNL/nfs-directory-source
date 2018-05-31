@@ -16,9 +16,6 @@ import java.nio.file.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
-
-import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 
 @Slf4j
 public class FileReader extends Reader {

@@ -21,7 +21,6 @@ public class DirectorySourceConnector extends SourceConnector {
 
     private String taskID;
     private DirectorySourceConfig config;
-    private FileOffsetManager fileOffsetManager;
 
     @Override
     public String version() {
@@ -129,7 +128,7 @@ public class DirectorySourceConnector extends SourceConnector {
             String zooKeeperPort = connectorConfigs.get(DirectorySourceConfig.ZKPORT);
 
             // Create new file offset manager in zookeeper with empty offset map
-            fileOffsetManager = new FileOffsetManager(zooKeeperHost, zooKeeperPort, absoluteDirname);
+            FileOffsetManager fileOffsetManager = new FileOffsetManager(zooKeeperHost, zooKeeperPort, absoluteDirname);
             fileOffsetManager.setOffsetMap(new HashMap<>());
             fileOffsetManager.upload();
             fileOffsetManager.close();

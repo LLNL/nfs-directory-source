@@ -1,7 +1,6 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
 import lombok.extern.log4j.Log4j;
-import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;

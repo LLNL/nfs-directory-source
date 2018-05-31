@@ -37,11 +37,11 @@ public abstract class FileStreamParser {
         }
     }
 
-    public synchronized void seekToLine(Long line) throws FileNotFoundException, EOFException, IOException {
+    public synchronized void seekToLine(Long line) throws IOException {
         seekToLine(line, true);
     }
 
-    public synchronized void seekToLine(Long line, Boolean init) throws FileNotFoundException, EOFException, IOException {
+    public synchronized void seekToLine(Long line, Boolean init) throws IOException {
         close();
         fileInputStream = new FileInputStream(new File(filename));
         dataInputStream = new DataInputStream(fileInputStream);

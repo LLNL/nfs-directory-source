@@ -7,14 +7,15 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
-import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.*;
+import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.idstrAvroData;
+import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.idstrAvroSchemaEscapedString;
 
 @Log4j
 public class JsonFileSourceTest extends ConnectTest {

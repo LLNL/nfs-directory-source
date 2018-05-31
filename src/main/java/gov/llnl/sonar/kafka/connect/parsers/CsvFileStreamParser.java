@@ -7,7 +7,6 @@ import org.apache.avro.Schema;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.errors.DataException;
 
 import java.io.*;
