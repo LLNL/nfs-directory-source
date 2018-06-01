@@ -21,6 +21,7 @@ public class DirectorySourceConnector extends SourceConnector {
 
     private String taskID;
     private DirectorySourceConfig config;
+    private static long BATCH_SIZE_MAX = 500000L;
 
     @Override
     public String version() {
@@ -34,6 +35,12 @@ public class DirectorySourceConnector extends SourceConnector {
         Path absolutePath = Paths.get(props.get(DirectorySourceConfig.DIRNAME)).toAbsolutePath();
         String absoluteDirname = absolutePath.toString();
         props.put(DirectorySourceConfig.DIRNAME, absoluteDirname);
+
+        if (Long.valueOf(props.get(DirectorySourceConfig.BATCH_SIZE)) > BATCH_SIZE_MAX) {
+            log.warn(String.format("Specified \"%s\" exceeds maximum %d, setting to maximum", DirectorySourceConfig.BATCH_SIZE, BATCH_SIZE_MAX));
+            props.put(DirectorySourceConfig.BATCH_SIZE, String.valueOf(BATCH_SIZE_MAX));
+        }
+
 
         config = new DirectorySourceConfig(props);
 
