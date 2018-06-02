@@ -110,7 +110,7 @@ public class DirectorySourceConnector extends SourceConnector {
                 Files.isExecutable(completeddirpath))) {
             for (ConfigValue cv : configValues) {
                 if (cv.name().equals(DirectorySourceConfig.COMPLETED_DIRNAME)) {
-                    cv.addErrorMessage("Specified \"" + DirectorySourceConfig.DIRNAME + "\" must: exist, be a directory, be writable and executable");
+                    cv.addErrorMessage("Specified \"" + DirectorySourceConfig.COMPLETED_DIRNAME + "\" must: exist, be a directory, be writable and executable");
                 }
             }
         }
