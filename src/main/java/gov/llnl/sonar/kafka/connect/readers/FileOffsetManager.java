@@ -1,124 +1,152 @@
 package gov.llnl.sonar.kafka.connect.readers;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.SerializationException;
 import org.apache.commons.lang3.SerializationUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.locks.InterProcessLock;
 import org.apache.curator.framework.recipes.locks.InterProcessMutex;
-import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.curator.framework.state.ConnectionState;
+import org.apache.curator.framework.state.ConnectionStateListener;
+import org.apache.curator.retry.RetryForever;
 import org.apache.zookeeper.*;
-
-import java.io.EOFException;
-import java.util.HashMap;
 
 @Slf4j
 public class FileOffsetManager {
 
-    private HashMap<String, FileOffset> fileOffsetMap = new HashMap<>();
+    private Long threadID;
 
-    private String zooKeeperPath;
+    private String fileOffsetBasePath;
 
-    CuratorFramework client;
+    private CuratorFramework client;
 
     private InterProcessLock lock;
 
-    public FileOffsetManager(String zooKeeperHost, String zooKeeperPort, String fileOffsetPath) throws Exception {
-        this.zooKeeperPath = fileOffsetPath;
+    public FileOffsetManager(String zooKeeperHost, String zooKeeperPort, String fileOffsetBasePath, boolean reset) throws Exception {
+        this.threadID = Thread.currentThread().getId();
+        this.fileOffsetBasePath = fileOffsetBasePath;
 
-        client = CuratorFrameworkFactory.newClient(zooKeeperHost + ":" + zooKeeperPort, new ExponentialBackoffRetry(1000, 3));
+        //log.debug("Thread {}: Initializing zookeeper connection", threadID);
+
+        client = CuratorFrameworkFactory.newClient(
+                zooKeeperHost + ":" + zooKeeperPort,
+                Integer.MAX_VALUE,
+                Integer.MAX_VALUE,
+                new RetryForever(1000));
+
+        FileOffsetManager thisRef = this;
+        client.getConnectionStateListenable().addListener(new ConnectionStateListener() {
+            @Override
+            public void stateChanged(CuratorFramework client, ConnectionState newState) {
+                if (!newState.isConnected()) {
+                    log.warn("Thread {}: Curator state changed to {} with contents: {}", threadID, newState.toString(), thisRef.toString());
+                }
+            }
+        });
         client.start();
         client.blockUntilConnected();
 
-        lock = new InterProcessMutex(client, fileOffsetPath);
+        //log.debug("Thread {}: Zookeeper connection initialized", threadID);
 
-        // Create offset manager exactly once if necessary
-        synchronized (FileOffsetManager.class) {
-            lock();
-
-            if (client.checkExists().creatingParentContainersIfNeeded().forPath(fileOffsetPath) == null) {
-                // Path DNE, create it
-                client.create()
-                        .creatingParentContainersIfNeeded()
-                        .withMode(CreateMode.PERSISTENT)
-                        .withACL(ZooDefs.Ids.OPEN_ACL_UNSAFE)
-                        .forPath(this.zooKeeperPath, SerializationUtils.serialize(fileOffsetMap));
-
-                // Upload empty map
-                upload();
-            }
-
-            unlock();
+        if (reset) {
+            reset();
         }
 
+        //log.debug("Thread {}: Initializing lock", threadID);
+        lock = new InterProcessMutex(client, fileOffsetBasePath);
+        //log.debug("Thread {}: Lock initialized", threadID);
     }
 
-    public void upload() throws Exception {
-        client.setData().forPath(zooKeeperPath, SerializationUtils.serialize(fileOffsetMap));
+    private void reset() throws Exception {
+
+        //log.debug("Thread {}: Checking for file offset base path {}", threadID, fileOffsetBasePath);
+
+        if (client.checkExists().creatingParentContainersIfNeeded().forPath(fileOffsetBasePath) != null) {
+            //log.debug("Thread {}: Deleting previous file offset base path {}", threadID, fileOffsetBasePath);
+            client.delete().deletingChildrenIfNeeded().forPath(fileOffsetBasePath);
+        }
+
+        //log.debug("Thread {}: Creating file offset base path {}", threadID, fileOffsetBasePath);
+
+        client.create()
+                .creatingParentContainersIfNeeded()
+                .withMode(CreateMode.PERSISTENT)
+                .withACL(ZooDefs.Ids.OPEN_ACL_UNSAFE)
+                .forPath(fileOffsetBasePath);
     }
 
-    public void download() throws Exception {
-        byte[] fileOffsetMapBytes = client.getData().forPath(zooKeeperPath);
+    @Override
+    public String toString() {
+        final String lockString;
 
+        if (lock != null) {
+            lockString = String.valueOf(lock.isAcquiredInThisProcess());
+        } else {
+            lockString = "null";
+        }
+
+        return "FileOffsetManager(Path=" + fileOffsetBasePath + ", Locked=" + lockString + ")";
+    }
+
+    void uploadFileOffset(String filePath, FileOffset fileOffset) throws Exception {
+
+        //log.debug("Thread {}: Uploading file offset {}: {}", threadID, filePath, fileOffset.toString());
+        client.create().orSetData().forPath(filePath, SerializationUtils.serialize(fileOffset));
+        //log.debug("Thread {}: Uploaded file offset {}: {}", threadID, filePath, fileOffset.toString());
+    }
+
+    /** MUST BE CALLED WITH LOCK */
+    FileOffset downloadFileOffsetWithLock(String fileOffsetPath) throws Exception {
+
+        FileOffset fileOffset;
+
+        //log.debug("Thread {}: Downloading file offset if exists: {}", threadID, fileOffsetPath);
+
+        if (client.checkExists().creatingParentContainersIfNeeded().forPath(fileOffsetPath) == null) {
+            //log.debug("Thread {}: File offset does not exist, creating and locking it: {} ", threadID, fileOffsetPath);
+            fileOffset = new FileOffset(0L, true, false);
+            client.create().forPath(fileOffsetPath, SerializationUtils.serialize(fileOffset));
+        } else {
+            //log.debug("Thread {}: File offset exists, getting it: {} ", threadID, fileOffsetPath);
+            byte[] fileOffsetBytes = client.getData().forPath(fileOffsetPath);
+            fileOffset = SerializationUtils.deserialize(fileOffsetBytes);
+            if (fileOffset.locked || fileOffset.completed) {
+                fileOffset = null;
+            }
+        }
+
+        //log.debug("Thread {}: Downloaded file offset {}: {}", threadID, fileOffsetPath, fileOffset);
+
+        return fileOffset;
+    }
+
+
+    public void lock() {
         try {
-            fileOffsetMap = SerializationUtils.deserialize(fileOffsetMapBytes);
-        } catch (SerializationException e) {
-            if (ExceptionUtils.getRootCause(e) instanceof EOFException) {
-                // empty file offset map, that's ok
-            } else {
-                throw e;
-            }
-        }
-    }
-
-    public void delete() throws Exception {
-
-        synchronized (FileOffsetManager.class) {
-
-            lock();
-
-            if (client.checkExists().forPath(zooKeeperPath) != null) {
-                client.delete().deletingChildrenIfNeeded().forPath(zooKeeperPath);
-            }
-
-            unlock();
-        }
-    }
-
-    public HashMap<String, FileOffset> getOffsetMap() {
-        return fileOffsetMap;
-    }
-
-    public void setOffsetMap(HashMap<String, FileOffset> map) {
-        fileOffsetMap = map;
-    }
-
-    public boolean lock() {
-        try {
+            //log.debug("Thread {}: Acquiring lock for {}", threadID, fileOffsetBasePath);
             lock.acquire();
-            return true;
+            //log.debug("Thread {}: Acquired lock for {}", threadID, fileOffsetBasePath);
         } catch (Exception e) {
-            log.error("Exception:", e);
+            log.error("Thread {}: {}", threadID, e);
         }
-        return false;
     }
 
-    public boolean unlock() {
-        try {
-            lock.release();
-            return true;
-        } catch (Exception e) {
-            log.error("Exception:", e);
+    public void unlock() {
+        if(lock.isAcquiredInThisProcess()) {
+            try {
+                //log.debug("Thread {}: Releasing lock for {}", threadID, fileOffsetBasePath);
+                lock.release();
+                //log.debug("Thread {}: Released lock for {}", threadID, fileOffsetBasePath);
+            } catch (Exception e) {
+                log.error("Thread {}: {}", threadID, e);
+            }
         }
-        return false;
     }
 
     public void close() {
-        if (lock.isAcquiredInThisProcess()) {
-            unlock();
-        }
+        unlock();
+        //log.debug("Thread {}: Closing zookeeper client", threadID);
         client.close();
+        //log.debug("Thread {}: Closed zookeeper client", threadID);
     }
 }

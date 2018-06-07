@@ -9,22 +9,10 @@ public class FileOffset implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    public FileOffset(Long offset, boolean locked, boolean completed) {
+    FileOffset(Long offset, boolean locked, boolean completed) {
         this.offset = offset;
         this.locked = locked;
         this.completed = completed;
-    }
-
-    public void setLocked(boolean l) {
-        locked = l;
-    }
-
-    public void setCompleted(boolean c) {
-        completed = c;
-    }
-
-    public void setOffset(Long l) {
-        offset = l;
     }
 
     @Override

@@ -47,7 +47,7 @@ public class JsonFileStreamParser extends FileStreamParser {
         try {
             datum = datumReader.read(datum, decoder);
             currentLine++;
-            return avroConnectConverter.toConnectData(connectSchema, datum);
+            return datum;
         } catch (AvroTypeException e) {
             log.error("AvroTypeException at {}:{}", filename, currentLine, e);
             throw new ParseException();

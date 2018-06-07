@@ -16,8 +16,8 @@
 
 package io.confluent.connect.avro;
 
-import io.confluent.common.config.AbstractConfig;
-import io.confluent.common.config.ConfigDef;
+import org.apache.kafka.common.config.AbstractConfig;
+import org.apache.kafka.common.config.ConfigDef;
 
 import java.util.HashMap;
 import java.util.Map;

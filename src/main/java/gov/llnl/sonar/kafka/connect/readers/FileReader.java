@@ -16,13 +16,13 @@ import java.nio.file.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public class FileReader extends Reader {
     private String taskID;
     private Path path;
     private Path completedFilePath;
-    private String topic;
 
     private Long batchSize;
     private String partitionField;
@@ -36,7 +36,6 @@ public class FileReader extends Reader {
 
     public FileReader(String filename,
                       String completedDirectoryName,
-                      String topic,
                       org.apache.avro.Schema avroSchema,
                       Long batchSize,
                       String partitionField,
@@ -45,13 +44,12 @@ public class FileReader extends Reader {
                       Map<String, Object> formatOptions,
                       Long fileOffset) throws UnknownHostException {
         this(new File(filename).toPath().toAbsolutePath(),
-                completedDirectoryName, topic, avroSchema, batchSize,
+                completedDirectoryName, avroSchema, batchSize,
                 partitionField, offsetField, format, formatOptions, fileOffset);
     }
 
     public FileReader(Path path,
                       String completedDirectoryName,
-                      String topic,
                       org.apache.avro.Schema avroSchema,
                       Long batchSize,
                       String partitionField,
@@ -63,42 +61,35 @@ public class FileReader extends Reader {
 
         this.taskID = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
         this.path = path;
-        this.topic = topic;
         this.batchSize = batchSize;
         this.partitionField = partitionField;
         this.offsetField = offsetField;
         this.currentOffset = fileOffset;
 
-        while (!breakAndClose.get()) {
-            try {
-                // TODO: handle name collisions /dir/foo/file1 /dir/bar/file1
-                this.completedFilePath = Paths.get(completedDirectoryName,path.getFileName() + ".COMPLETED");
+        try {
+            // TODO: handle name collisions /dir/foo/file1 /dir/bar/file1
+            this.completedFilePath = Paths.get(completedDirectoryName,path.getFileName() + ".COMPLETED");
 
-                if (Files.notExists(path)) {
-                    throw new NoSuchFileException(String.format("File %s does not exist!", path));
-                }
-
-                switch (format) {
-                    case "csv":
-                        this.streamParser = new CsvFileStreamParser(path.toString(), avroSchema, formatOptions);
-                        break;
-                    case "json":
-                        this.streamParser = new JsonFileStreamParser(path.toString(), avroSchema);
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Invalid file format " + format);
-                }
-
-                break;
-
-            } catch (NoSuchFileException e) {
-                log.error("Task {}: NoSuchFileException:", taskID, e);
-            } catch (Exception e) {
-                log.error("Task {}: Exception:", taskID, e);
+            if (Files.notExists(path)) {
+                throw new NoSuchFileException(String.format("File %s does not exist!", path));
             }
-        }
 
-        log.debug("Task {}: Added ingestion file {}", taskID, path);
+            switch (format) {
+                case "csv":
+                    this.streamParser = new CsvFileStreamParser(path.toString(), avroSchema, formatOptions);
+                    break;
+                case "json":
+                    this.streamParser = new JsonFileStreamParser(path.toString(), avroSchema);
+                    break;
+                default:
+                    throw new IllegalArgumentException("Invalid file format " + format);
+            }
+
+        } catch (NoSuchFileException e) {
+            log.error("Task {}: NoSuchFileException:", taskID, e);
+        } catch (Exception e) {
+            log.error("Task {}: Exception:", taskID, e);
+        }
     }
 
     public void purgeFile() {
@@ -115,7 +106,7 @@ public class FileReader extends Reader {
     }
 
     @Override
-    public synchronized Long read(List<SourceRecord> records, SourceTaskContext context)
+    public synchronized Long read(List<RawRecord> rawRecords, SourceTaskContext context)
             throws FileLockedException {
 
         if (ingestCompleted) {
@@ -137,23 +128,17 @@ public class FileReader extends Reader {
         }
 
         // Do the read
-        Long i;
+        Long i, recordsRead = 0L;
+        Map sourcePartition = Collections.singletonMap(partitionField, path.toString());
         for (i = 0L; i < batchSize; i++) {
 
-            if (breakAndClose.get())
-                break;
-
             try {
-                Object parsedValue = streamParser.read();
+                Object rawData = streamParser.read();
 
-                if (parsedValue != null) {
-
-                    Map sourcePartition = Collections.singletonMap(partitionField, path.toString());
-                    Map sourceOffset = Collections.singletonMap(offsetField, currentOffset);
-
-                    records.add(new SourceRecord(sourcePartition, sourceOffset, topic, streamParser.connectSchema, parsedValue));
-
-                    currentOffset++;
+                if (rawData != null) {
+                    Map sourceOffset = Collections.singletonMap(offsetField, currentOffset++);
+                    rawRecords.add(new RawRecord(sourcePartition, sourceOffset, rawData));
+                    recordsRead++;
                 }
 
             } catch (ParseException e) {
@@ -172,20 +157,18 @@ public class FileReader extends Reader {
 
         log.debug("Task {}: Read {} records from file {}", taskID, i, path);
 
-        return i;
+        return recordsRead;
     }
 
-    Path getPath() {
+    public Path getPath() {
         return path;
     }
 
-    Long getCurrentOffset() {
+    public Long getCurrentOffset() {
         return currentOffset;
     }
 
-    @Override
     public synchronized void close() {
-        super.close();
         try {
             streamParser.close();
         } catch (Exception ex) {

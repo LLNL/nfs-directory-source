@@ -36,11 +36,10 @@ public class DirectorySourceConnector extends SourceConnector {
         String absoluteDirname = absolutePath.toString();
         props.put(DirectorySourceConfig.DIRNAME, absoluteDirname);
 
-        if (Long.valueOf(props.get(DirectorySourceConfig.BATCH_SIZE)) > BATCH_SIZE_MAX) {
-            log.warn(String.format("Specified \"%s\" exceeds maximum %d, setting to maximum", DirectorySourceConfig.BATCH_SIZE, BATCH_SIZE_MAX));
-            props.put(DirectorySourceConfig.BATCH_SIZE, String.valueOf(BATCH_SIZE_MAX));
-        }
-
+        // if (Long.valueOf(props.get(DirectorySourceConfig.BATCH_ROWS)) > BATCH_SIZE_MAX) {
+        //     log.warn(String.format("Specified \"%s\" exceeds maximum %d, setting to maximum", DirectorySourceConfig.BATCH_SIZE, BATCH_SIZE_MAX));
+        //     props.put(DirectorySourceConfig.BATCH_SIZE, String.valueOf(BATCH_SIZE_MAX));
+        // }
 
         config = new DirectorySourceConfig(props);
 
@@ -134,10 +133,8 @@ public class DirectorySourceConnector extends SourceConnector {
             String zooKeeperHost = connectorConfigs.get(DirectorySourceConfig.ZKHOST);
             String zooKeeperPort = connectorConfigs.get(DirectorySourceConfig.ZKPORT);
 
-            // Create new file offset manager in zookeeper with empty offset map
-            FileOffsetManager fileOffsetManager = new FileOffsetManager(zooKeeperHost, zooKeeperPort, absoluteDirname);
-            fileOffsetManager.setOffsetMap(new HashMap<>());
-            fileOffsetManager.upload();
+            // Create and reset file offset manager
+            FileOffsetManager fileOffsetManager = new FileOffsetManager(zooKeeperHost, zooKeeperPort, absoluteDirname, true);
             fileOffsetManager.close();
         } catch (Exception e) {
             log.error("Exception:", e);

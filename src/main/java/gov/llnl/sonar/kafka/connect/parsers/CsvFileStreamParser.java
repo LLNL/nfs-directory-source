@@ -7,7 +7,6 @@ import org.apache.avro.Schema;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.kafka.connect.errors.DataException;
 
 import java.io.*;
 import java.util.*;
@@ -54,7 +53,6 @@ public class CsvFileStreamParser extends FileStreamParser {
 
         this.csvFormat = csvFormatFromOptions(formatOptions);
         init();
-        csvRecordConverter = new CsvRecordConverter(connectSchema);
     }
 
     @Override
@@ -69,28 +67,11 @@ public class CsvFileStreamParser extends FileStreamParser {
 
     @Override
     public synchronized Object read() throws ParseException, EOFException {
-
-        final CSVRecord csvRecord;
         try {
-            csvRecord = csvRecordIterator.next();
+            return csvRecordIterator.next().toMap();
         } catch (NoSuchElementException e) {
             throw new EOFException();
         }
-
-        try {
-            return csvRecordConverter.convert(csvRecord.toMap());
-        } catch (DataException e) {
-            log.error("Error parsing {}", csvRecord.toMap());
-            log.error("DataException:", e);
-            throw new ParseException();
-        } catch (NumberFormatException e) {
-            log.error("Error parsing {}", csvRecord.toMap());
-            log.error("NumberFormatException:", e);
-        } catch (Exception e) {
-            log.error("Error parsing {}", csvRecord.toMap(), e);
-        }
-
-        return null;
     }
 }
 

@@ -42,8 +42,10 @@ public class DirectorySourceConfig extends AbstractConfig {
             "}";
     public static final String AVRO_SCHEMA_FILENAME = "avro.schema.filename";
     public static final String AVRO_SCHEMA_FILENAME_DOC = "Avro schema filename.";
-    public static final String BATCH_SIZE = "batch.size";
-    public static final String BATCH_SIZE_DOC = "Number of lines to read/ingest at a time from the file.";
+    public static final String BATCH_ROWS = "batch.rows";
+    public static final String BATCH_ROWS_DOC = "Number of rows to read/ingest at a time from each file.";
+    public static final String BATCH_FILES = "batch.files";
+    public static final String BATCH_FILES_DOC = "Number of files to read/ingest at a time.";
     public static final String ZKHOST = "zk.host";
     public static final String ZKHOST_DOC = "ZooKeeper hostname";
     public static final String ZKPORT = "zk.port";
@@ -60,7 +62,8 @@ public class DirectorySourceConfig extends AbstractConfig {
                 .define(FORMAT_OPTIONS, Type.STRING, "{}", Importance.LOW, FORMAT_OPTIONS_DOC)
                 .define(AVRO_SCHEMA, Type.STRING, "", Importance.HIGH, AVRO_SCHEMA_DOC)
                 .define(AVRO_SCHEMA_FILENAME, Type.STRING, "", Importance.HIGH, AVRO_SCHEMA_FILENAME_DOC)
-                .define(BATCH_SIZE, Type.LONG, 1000L, Importance.HIGH, BATCH_SIZE_DOC)
+                .define(BATCH_ROWS, Type.LONG, 1000L, Importance.HIGH, BATCH_ROWS_DOC)
+                .define(BATCH_FILES, Type.LONG, 10L, Importance.HIGH, BATCH_FILES_DOC)
                 ;
     }
 
@@ -73,6 +76,7 @@ public class DirectorySourceConfig extends AbstractConfig {
     public String getFormatOptions() { return this.getString(FORMAT_OPTIONS); }
     public String getAvroSchema() { return this.getString(AVRO_SCHEMA); }
     public String getAvroSchemaFilename() { return this.getString(AVRO_SCHEMA_FILENAME); }
-    public Long getBatchSize() { return this.getLong(BATCH_SIZE); }
+    public Long getBatchRows() { return this.getLong(BATCH_ROWS); }
+    public Long getBatchFiles() { return this.getLong(BATCH_FILES); }
 }
 

@@ -1,8 +1,11 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
+import gov.llnl.sonar.kafka.connect.converters.Converter;
 import gov.llnl.sonar.kafka.connect.readers.DirectoryReader;
+import gov.llnl.sonar.kafka.connect.readers.RawRecord;
 import gov.llnl.sonar.kafka.connect.util.OptionsParser;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
+import io.confluent.connect.avro.AvroData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
@@ -12,6 +15,8 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class DirectorySourceTask extends SourceTask {
@@ -20,7 +25,10 @@ public class DirectorySourceTask extends SourceTask {
     private static final String PARTITION_FIELD = "filename";
     private static final String OFFSET_FIELD = "line";
 
+    private String topic;
     private DirectoryReader reader = null;
+    private org.apache.kafka.connect.data.Schema connectSchema;
+    private Function<Object, Object> rawRecordConverter;
 
     @Override
     public String version() {
@@ -44,18 +52,25 @@ public class DirectorySourceTask extends SourceTask {
                 avroSchema = new org.apache.avro.Schema.Parser().parse(new File(config.getAvroSchemaFilename()));
             }
 
-            reader = new DirectoryReader(
+            this.topic = config.getTopic();
+
+            this.reader = new DirectoryReader(
                     relativeDirname,
                     completedDirname,
-                    config.getTopic(),
                     avroSchema,
-                    config.getBatchSize(),
+                    config.getBatchRows(),
+                    config.getBatchFiles(),
                     PARTITION_FIELD,
                     OFFSET_FIELD,
                     config.getFormat(),
                     OptionsParser.optionsStringToMap(config.getFormatOptions()),
                     config.getZooKeeperHost(),
                     config.getZooKeeperPort());
+
+            AvroData avroData = new AvroData(2);
+            this.connectSchema = avroData.toConnectSchema(avroSchema);
+
+            this.rawRecordConverter = Converter.getConverterFor(avroData, connectSchema, config.getFormat());
 
             log.info("Task {}: Added ingestion directory {}", taskID, reader.getCanonicalDirname());
 
@@ -68,13 +83,21 @@ public class DirectorySourceTask extends SourceTask {
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
 
-        ArrayList<SourceRecord> records = new ArrayList<>();
+        ArrayList<RawRecord> rawRecords = new ArrayList<>();
 
         try {
-            Long numRecordsRead = reader.read(records, context);
+            Long numRecordsRead = reader.read(rawRecords, context);
+
             if (numRecordsRead > 0) {
+
+                List<SourceRecord> parsedRecords = rawRecords.stream().map(r -> {
+                    return r.toSourceRecord(topic, connectSchema, rawRecordConverter);
+                }).collect(Collectors.toList());
+
                 log.info("Task {}: Read {} records from directory {}", taskID, numRecordsRead, reader.getCanonicalDirname());
-                return records;
+
+                return parsedRecords;
+
             }
             else {
                 log.debug("Task {}: No records read from {}, sleeping for 1 second", taskID, reader.getCanonicalDirname());
