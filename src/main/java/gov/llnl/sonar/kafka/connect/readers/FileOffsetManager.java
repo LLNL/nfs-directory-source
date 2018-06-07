@@ -9,7 +9,10 @@ import org.apache.curator.framework.recipes.locks.InterProcessMutex;
 import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.RetryForever;
-import org.apache.zookeeper.*;
+import org.apache.curator.utils.ZKPaths;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Slf4j
 public class FileOffsetManager {
@@ -21,6 +24,11 @@ public class FileOffsetManager {
     private CuratorFramework client;
 
     private InterProcessLock lock;
+
+    static Long offsetFileTTL = 30L*1000L;
+
+    static String LOCKS_SUBPATH = "locks";
+    static String OFFSETS_SUBPATH = "offsets";
 
     public FileOffsetManager(String zooKeeperHost, String zooKeeperPort, String fileOffsetBasePath, boolean reset) throws Exception {
         this.threadID = Thread.currentThread().getId();
@@ -53,7 +61,7 @@ public class FileOffsetManager {
         }
 
         //log.debug("Thread {}: Initializing lock", threadID);
-        lock = new InterProcessMutex(client, fileOffsetBasePath);
+        lock = new InterProcessMutex(client, ZKPaths.makePath(fileOffsetBasePath, LOCKS_SUBPATH));
         //log.debug("Thread {}: Lock initialized", threadID);
     }
 
@@ -66,13 +74,11 @@ public class FileOffsetManager {
             client.delete().deletingChildrenIfNeeded().forPath(fileOffsetBasePath);
         }
 
-        //log.debug("Thread {}: Creating file offset base path {}", threadID, fileOffsetBasePath);
+        //log.debug("Thread {}: Creating file offset base path {}, locks, and offsets", threadID, fileOffsetBasePath);
 
-        client.create()
-                .creatingParentContainersIfNeeded()
-                .withMode(CreateMode.PERSISTENT)
-                .withACL(ZooDefs.Ids.OPEN_ACL_UNSAFE)
-                .forPath(fileOffsetBasePath);
+        client.create().creatingParentContainersIfNeeded().forPath(fileOffsetBasePath);
+        client.create().forPath(ZKPaths.makePath(fileOffsetBasePath, LOCKS_SUBPATH));
+        client.create().forPath(ZKPaths.makePath(fileOffsetBasePath, OFFSETS_SUBPATH));
     }
 
     @Override
@@ -88,34 +94,48 @@ public class FileOffsetManager {
         return "FileOffsetManager(Path=" + fileOffsetBasePath + ", Locked=" + lockString + ")";
     }
 
-    void uploadFileOffset(String filePath, FileOffset fileOffset) throws Exception {
+    private String makeOffsetPath(String filePath) {
+        Path relativePath = Paths.get(fileOffsetBasePath).relativize(Paths.get(filePath));
+        return ZKPaths.makePath(fileOffsetBasePath, OFFSETS_SUBPATH, relativePath.toString());
+    }
 
-        //log.debug("Thread {}: Uploading file offset {}: {}", threadID, filePath, fileOffset.toString());
-        client.create().orSetData().forPath(filePath, SerializationUtils.serialize(fileOffset));
-        //log.debug("Thread {}: Uploaded file offset {}: {}", threadID, filePath, fileOffset.toString());
+    void uploadFileOffset(String fileOffsetPath, FileOffset fileOffset) throws Exception {
+
+        String actualFileOffsetPath = makeOffsetPath(fileOffsetPath);
+
+        //log.debug("Thread {}: Uploading file offset {}: {}", threadID, actualFileOffsetPath, fileOffset.toString());
+
+        if (fileOffset.completed) {
+            client.create().orSetData().withTtl(offsetFileTTL).forPath(actualFileOffsetPath, SerializationUtils.serialize(fileOffset));
+        } else {
+            client.create().orSetData().forPath(actualFileOffsetPath, SerializationUtils.serialize(fileOffset));
+        }
+
+        //log.debug("Thread {}: Uploaded file offset {}: {}", threadID, actualFileOffsetPath, fileOffset.toString());
     }
 
     /** MUST BE CALLED WITH LOCK */
     FileOffset downloadFileOffsetWithLock(String fileOffsetPath) throws Exception {
 
         FileOffset fileOffset;
+        String actualFileOffsetPath = makeOffsetPath(fileOffsetPath);
 
-        //log.debug("Thread {}: Downloading file offset if exists: {}", threadID, fileOffsetPath);
+        //log.debug("Thread {}: Downloading file offset if exists: {}", threadID, actualFileOffsetPath);
 
-        if (client.checkExists().creatingParentContainersIfNeeded().forPath(fileOffsetPath) == null) {
-            //log.debug("Thread {}: File offset does not exist, creating and locking it: {} ", threadID, fileOffsetPath);
+        if (client.checkExists().creatingParentContainersIfNeeded().forPath(actualFileOffsetPath) == null) {
+            //log.debug("Thread {}: File offset does not exist, creating and locking it: {} ", threadID, actualFileOffsetPath);
             fileOffset = new FileOffset(0L, true, false);
-            client.create().forPath(fileOffsetPath, SerializationUtils.serialize(fileOffset));
+            client.create().forPath(actualFileOffsetPath, SerializationUtils.serialize(fileOffset));
         } else {
-            //log.debug("Thread {}: File offset exists, getting it: {} ", threadID, fileOffsetPath);
-            byte[] fileOffsetBytes = client.getData().forPath(fileOffsetPath);
+            //log.debug("Thread {}: File offset exists, getting it: {} ", threadID, actualFileOffsetPath);
+            byte[] fileOffsetBytes = client.getData().forPath(actualFileOffsetPath);
             fileOffset = SerializationUtils.deserialize(fileOffsetBytes);
             if (fileOffset.locked || fileOffset.completed) {
                 fileOffset = null;
             }
         }
 
-        //log.debug("Thread {}: Downloaded file offset {}: {}", threadID, fileOffsetPath, fileOffset);
+        //log.debug("Thread {}: Downloaded file offset {}: {}", threadID, actualFileOffsetPath, fileOffset);
 
         return fileOffset;
     }

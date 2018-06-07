@@ -25,7 +25,7 @@ public class BackupUtil {
                 try {
                     // Create archive entry with file
                     File file = path.toFile();
-                    out.putArchiveEntry(new TarArchiveEntry(file, file.getName()));
+                    out.putArchiveEntry(new TarArchiveEntry(file, source.relativize(path).toString()));
 
                     // Write archive entry with file contents
                     InputStream i = new FileInputStream(file);
