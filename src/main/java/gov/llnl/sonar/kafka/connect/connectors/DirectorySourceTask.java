@@ -30,6 +30,8 @@ public class DirectorySourceTask extends SourceTask {
     private org.apache.kafka.connect.data.Schema connectSchema;
     private Function<Object, Object> rawRecordConverter;
 
+    private static final long POLLING_MEMORY_REQUIRED = 8*1000*1000; // 8MB
+
     @Override
     public String version() {
         return VersionUtil.getVersion();
@@ -80,10 +82,20 @@ public class DirectorySourceTask extends SourceTask {
         }
     }
 
+    private long approximateAllocatableMemory() {
+        return Runtime.getRuntime().maxMemory() -
+                (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+    }
+
     @Override
-    public List<SourceRecord> poll() throws InterruptedException {
+    public synchronized List<SourceRecord> poll() throws InterruptedException {
 
         ArrayList<RawRecord> rawRecords = new ArrayList<>();
+
+        if (approximateAllocatableMemory() < POLLING_MEMORY_REQUIRED) {
+            this.wait(1000);
+            return null;
+        }
 
         try {
             Long numRecordsRead = reader.read(rawRecords, context);
@@ -101,32 +113,26 @@ public class DirectorySourceTask extends SourceTask {
             }
             else {
                 log.debug("Task {}: No records read from {}, sleeping for 1 second", taskID, reader.getCanonicalDirname());
-                synchronized (this) {
-                    this.wait(1000);
-                }
+                this.wait(1000);
             }
         } catch (Exception ex) {
             log.error("Task {}: {}", taskID, ex);
-            synchronized (this) {
-                this.wait(1000);
-            }
+            this.wait(1000);
         }
 
         return null;
     }
 
     @Override
-    public void stop() {
-        synchronized (this) {
-            try {
-                if (reader != null) {
-                    reader.close();
-                }
-            } catch (Exception ex) {
-                log.error("Task {}: {}", taskID, ex);
+    public synchronized void stop() {
+        try {
+            if (reader != null) {
+                reader.close();
             }
-            this.notify();
+        } catch (Exception ex) {
+            log.error("Task {}: {}", taskID, ex);
         }
+        this.notify();
     }
 }
 
