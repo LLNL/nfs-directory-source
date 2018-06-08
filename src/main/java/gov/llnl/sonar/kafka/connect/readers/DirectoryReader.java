@@ -6,7 +6,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.connect.source.SourceTaskContext;
 
 import java.io.*;
-import java.lang.reflect.Array;
 import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;

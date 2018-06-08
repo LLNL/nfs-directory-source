@@ -105,11 +105,7 @@ public class FileOffsetManager {
 
         //log.debug("Thread {}: Uploading file offset {}: {}", threadID, actualFileOffsetPath, fileOffset.toString());
 
-        if (fileOffset.completed) {
-            client.create().orSetData().withTtl(offsetFileTTL).forPath(actualFileOffsetPath, SerializationUtils.serialize(fileOffset));
-        } else {
-            client.create().orSetData().forPath(actualFileOffsetPath, SerializationUtils.serialize(fileOffset));
-        }
+        client.create().orSetData().forPath(actualFileOffsetPath, SerializationUtils.serialize(fileOffset));
 
         //log.debug("Thread {}: Uploaded file offset {}: {}", threadID, actualFileOffsetPath, fileOffset.toString());
     }
