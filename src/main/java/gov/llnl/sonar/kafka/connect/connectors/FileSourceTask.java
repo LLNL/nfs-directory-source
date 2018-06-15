@@ -10,6 +10,7 @@ import io.confluent.connect.avro.AvroData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -62,7 +63,7 @@ public class FileSourceTask extends SourceTask {
                     PARTITION_FIELD,
                     OFFSET_FIELD,
                     config.getFormat(),
-                    OptionsParser.optionsStringToMap(config.getFormat()),
+                    new JSONObject(config.getFormat()),
                     0L);
 
             AvroData avroData = new AvroData(2);

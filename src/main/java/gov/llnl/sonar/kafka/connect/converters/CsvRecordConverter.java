@@ -74,8 +74,12 @@ public class CsvRecordConverter extends Converter<Map<String, String>>{
                 throw new DataException("Schema mismatch");
             }
 
-            Object parsedValue = stringToConnectObject(value, connectSchema.field(key).schema().type());
-            record = record.put(key, parsedValue);
+            try {
+                Object parsedValue = stringToConnectObject(value, connectSchema.field(key).schema().type());
+                record = record.put(key, parsedValue);
+            } catch (NumberFormatException e) {
+                log.error("Failed to parse key {}, value {}, expected type {}", key, value, connectSchema.field(key).schema().type(), e);
+            }
         }
 
         return record;

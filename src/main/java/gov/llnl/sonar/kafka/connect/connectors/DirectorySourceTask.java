@@ -9,6 +9,7 @@ import io.confluent.connect.avro.AvroData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -65,7 +66,7 @@ public class DirectorySourceTask extends SourceTask {
                     PARTITION_FIELD,
                     OFFSET_FIELD,
                     config.getFormat(),
-                    OptionsParser.optionsStringToMap(config.getFormatOptions()),
+                    new JSONObject(config.getFormatOptions()),
                     config.getZooKeeperHost(),
                     config.getZooKeeperPort());
 
@@ -92,7 +93,11 @@ public class DirectorySourceTask extends SourceTask {
 
         ArrayList<RawRecord> rawRecords = new ArrayList<>();
 
-        if (approximateAllocatableMemory() < POLLING_MEMORY_REQUIRED) {
+        Long mem;
+        if ((mem = approximateAllocatableMemory()) < POLLING_MEMORY_REQUIRED) {
+            log.warn("Task {}: Available memory {} less than required amount {}", taskID, mem, POLLING_MEMORY_REQUIRED);
+            log.warn("Task {}: Polling paused for 1 second and sending hint to garbage collect", taskID);
+            System.gc(); // tell the system to garbage collect soon
             this.wait(1000);
             return null;
         }

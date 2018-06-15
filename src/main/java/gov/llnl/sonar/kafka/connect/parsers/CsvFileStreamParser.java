@@ -1,12 +1,13 @@
 package gov.llnl.sonar.kafka.connect.parsers;
 
-import gov.llnl.sonar.kafka.connect.converters.CsvRecordConverter;
 import gov.llnl.sonar.kafka.connect.exceptions.ParseException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.*;
 import java.util.*;
@@ -17,29 +18,40 @@ public class CsvFileStreamParser extends FileStreamParser {
     private CSVFormat csvFormat;
     private CSVParser csvParser;
     private Iterator<CSVRecord> csvRecordIterator;
-    private CsvRecordConverter csvRecordConverter;
 
-    private CSVFormat csvFormatFromOptions(Map<String, Object> formatOptions) {
+    private CSVFormat csvFormatFromOptions(JSONObject formatOptions) {
         CSVFormat csvFormat = CSVFormat.DEFAULT;
-        for (Map.Entry<String, Object> option : formatOptions.entrySet()) {
-            switch (option.getKey()) {
+        for (String option : formatOptions.keySet()) {
+            switch (option) {
                 case ("withHeader"):
-                    Boolean withHeader = (Boolean) option.getValue();
+                    boolean withHeader = formatOptions.getBoolean(option);
                     if (withHeader) {
                         csvFormat = csvFormat.withFirstRecordAsHeader();
                     }
                     break;
                 case ("columns"):
-                    List<String> columns = (List<String>) option.getValue();
+                    JSONArray arr = formatOptions.getJSONArray(option);
+                    List<String> columns = new ArrayList<>();
+                    for(int i = 0; i < arr.length(); i++){
+                        columns.add(arr.getString(i));
+                    }
                     csvFormat = csvFormat.withHeader(columns.toArray(new String[0]));
                     break;
                 case ("delimiter"):
-                    char delimiter = ((String) option.getValue()).charAt(0);
+                    char delimiter = formatOptions.getString(option).charAt(0);
                     csvFormat = csvFormat.withDelimiter(delimiter);
                     break;
                 case ("quoteChar"):
-                    char quoteChar = ((String) option.getValue()).charAt(0);
+                    char quoteChar = formatOptions.getString(option).charAt(0);
                     csvFormat = csvFormat.withQuote(quoteChar);
+                    break;
+                case ("commentChar"):
+                    char commentChar = formatOptions.getString(option).charAt(0);
+                    csvFormat = csvFormat.withCommentMarker(commentChar);
+                    break;
+                case ("ignoreSurroundingSpaces"):
+                    boolean ignore = formatOptions.getBoolean(option);
+                    csvFormat = csvFormat.withIgnoreSurroundingSpaces(ignore);
                     break;
             }
         }
@@ -48,7 +60,7 @@ public class CsvFileStreamParser extends FileStreamParser {
 
     public CsvFileStreamParser(String filename,
                                Schema avroSchema,
-                               Map<String, Object> formatOptions) {
+                               JSONObject formatOptions) {
         super(filename, avroSchema);
 
         this.csvFormat = csvFormatFromOptions(formatOptions);

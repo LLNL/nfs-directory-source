@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.connect.source.SourceTaskContext;
+import org.json.JSONObject;
 
 import java.io.*;
 import java.net.InetAddress;
@@ -26,7 +27,7 @@ public class DirectoryReader extends Reader {
     private String partitionField;
     private String offsetField;
     private String format;
-    private Map<String, Object> formatOptions;
+    private JSONObject formatOptions;
 
     private FileOffsetManager fileOffsetManager;
 
@@ -38,7 +39,7 @@ public class DirectoryReader extends Reader {
                            String partitionField,
                            String offsetField,
                            String format,
-                           Map<String, Object> formatOptions,
+                           JSONObject formatOptions,
                            String zooKeeperHost,
                            String zooKeeperPort)
             throws IOException {

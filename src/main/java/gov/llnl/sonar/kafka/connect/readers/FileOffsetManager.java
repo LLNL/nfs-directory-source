@@ -128,6 +128,9 @@ public class FileOffsetManager {
             fileOffset = SerializationUtils.deserialize(fileOffsetBytes);
             if (fileOffset.locked || fileOffset.completed) {
                 fileOffset = null;
+            } else {
+                fileOffset.locked = true;
+                client.setData().forPath(actualFileOffsetPath, SerializationUtils.serialize(fileOffset));
             }
         }
 

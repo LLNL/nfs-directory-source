@@ -8,6 +8,7 @@ import gov.llnl.sonar.kafka.connect.parsers.JsonFileStreamParser;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
+import org.json.JSONObject;
 
 import java.io.*;
 import java.net.InetAddress;
@@ -41,7 +42,7 @@ public class FileReader extends Reader {
                       String partitionField,
                       String offsetField,
                       String format,
-                      Map<String, Object> formatOptions,
+                      JSONObject formatOptions,
                       Long fileOffset) throws UnknownHostException {
         this(new File(filename).toPath().toAbsolutePath(),
                 completedDirectoryName, avroSchema, batchSize,
@@ -55,7 +56,7 @@ public class FileReader extends Reader {
                       String partitionField,
                       String offsetField,
                       String format,
-                      Map<String, Object> formatOptions,
+                      JSONObject formatOptions,
                       Long fileOffset)
             throws UnknownHostException {
 
