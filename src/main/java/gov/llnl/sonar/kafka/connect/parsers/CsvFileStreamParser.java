@@ -71,7 +71,7 @@ public class CsvFileStreamParser extends FileStreamParser {
     @Override
     void init() {
         try {
-            csvParser = csvFormat.parse(inputStreamReader);
+            csvParser = csvFormat.parse(this);
             csvRecordIterator = csvParser.iterator();
         } catch (IOException e) {
             log.error("IOException:", e);
@@ -79,7 +79,7 @@ public class CsvFileStreamParser extends FileStreamParser {
     }
 
     @Override
-    public synchronized Object read() throws ParseException, EOFException {
+    public synchronized Object readNextRecord() throws ParseException, EOFException {
         try {
             return csvRecordIterator.next().toMap();
         } catch (NoSuchElementException e) {

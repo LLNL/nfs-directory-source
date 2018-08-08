@@ -118,7 +118,7 @@ public class DirectorySourceTask extends SourceTask {
 
             }
             else {
-                log.debug("Task {}: No records read from {}, sleeping for 1 second", taskID, reader.getCanonicalDirname());
+                log.debug("Task {}: No records readNextRecord from {}, sleeping for 1 second", taskID, reader.getCanonicalDirname());
                 this.wait(1000);
             }
         } catch (Exception ex) {

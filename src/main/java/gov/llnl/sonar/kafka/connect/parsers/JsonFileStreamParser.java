@@ -30,30 +30,20 @@ public class JsonFileStreamParser extends FileStreamParser {
 
     @Override
     void init() {
-        try {
-            decoder = DecoderFactory.get().jsonDecoder(avroSchema, fileInputStream);
-        } catch (FileNotFoundException e) {
-            log.error("FileNotFoundException:", e);
-        } catch (IOException e) {
-            log.error("IOException:", e);
-        } catch (Exception e) {
-            log.error("Exception:", e);
-        }
-
     }
 
     @Override
-    public synchronized Object read() throws ParseException, EOFException {
+    public synchronized Object readNextRecord() throws ParseException, EOFException {
 
         try {
+            decoder = DecoderFactory.get().jsonDecoder(avroSchema, nextLine());
             datum = datumReader.read(datum, decoder);
-            currentLine++;
             return datum;
         } catch (AvroTypeException e) {
-            log.error("AvroTypeException at {}:{}", filename, currentLine, e);
+            log.error("AvroTypeException at {}:{}", filename, e);
             throw new ParseException();
         } catch (DataException e) {
-            log.error("DataException at {}:{}", filename, currentLine, e);
+            log.error("DataException at {}:{}", filename, e);
         } catch (EOFException e) {
             throw e;
         } catch (IOException e) {

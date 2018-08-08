@@ -6,7 +6,6 @@ import gov.llnl.sonar.kafka.connect.parsers.CsvFileStreamParser;
 import gov.llnl.sonar.kafka.connect.parsers.FileStreamParser;
 import gov.llnl.sonar.kafka.connect.parsers.JsonFileStreamParser;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
 import org.json.JSONObject;
 
@@ -17,7 +16,6 @@ import java.nio.file.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public class FileReader extends Reader {
@@ -122,7 +120,7 @@ public class FileReader extends Reader {
         // Skip to offset
         try {
             log.debug("Task {}: Reading from file {} line {}", taskID, path, currentOffset);
-            streamParser.seekToLine(currentOffset);
+            streamParser.seekToOffset(currentOffset);
         } catch (EOFException | FileNotFoundException e) {
             ingestCompleted = true;
             currentOffset = -1L;
@@ -133,16 +131,17 @@ public class FileReader extends Reader {
             log.error("Task {}: {}", taskID, e);
         }
 
-        // Do the read
+        // Do the readNextRecord
         Long i, recordsRead = 0L;
         Map sourcePartition = Collections.singletonMap(partitionField, path.toString());
         for (i = 0L; i < batchSize; i++) {
 
             try {
-                Object rawData = streamParser.read();
+                Object rawData = streamParser.readNextRecord();
+                currentOffset = streamParser.offset();
 
                 if (rawData != null) {
-                    Map sourceOffset = Collections.singletonMap(offsetField, currentOffset++);
+                    Map sourceOffset = Collections.singletonMap(offsetField, currentOffset);
                     rawRecords.add(new RawRecord(sourcePartition, sourceOffset, rawData));
                     recordsRead++;
                 }

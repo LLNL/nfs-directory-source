@@ -18,7 +18,7 @@ public class FileSourceConfig extends AbstractConfig {
     }
 
     public static final String FILENAME = "filename";
-    public static final String FILENAME_DOC = "The file to read from.";
+    public static final String FILENAME_DOC = "The file to readNextRecord from.";
     public static final String COMPLETED_DIRNAME = "completed.dirname";
     public static final String COMPLETED_DIRNAME_DOC = "The directory to move ingested files into";
     public static final String TOPIC = "topic";
@@ -43,7 +43,10 @@ public class FileSourceConfig extends AbstractConfig {
     public static final String AVRO_SCHEMA_FILENAME = "avro.schema.filename";
     public static final String AVRO_SCHEMA_FILENAME_DOC = "Avro schema filename.";
     public static final String BATCH_SIZE = "batch.size";
-    public static final String BATCH_SIZE_DOC = "Number of lines to read/ingest at a time from the file.";
+    public static final String BATCH_SIZE_DOC = "Number of lines to readNextRecord/ingest at a time from the file.";
+    public static final String EOF_SENTINEL = null;
+    public static final String EOF_SENTINEL_DOC = "String indicating the end of a file." +
+            "If defined, files will not be purged until this is reached";
 
     public static ConfigDef conf() {
         return new ConfigDef()
@@ -55,6 +58,7 @@ public class FileSourceConfig extends AbstractConfig {
                 .define(AVRO_SCHEMA, Type.STRING, "", Importance.HIGH, AVRO_SCHEMA_DOC)
                 .define(AVRO_SCHEMA_FILENAME, Type.STRING, "", Importance.HIGH, AVRO_SCHEMA_FILENAME_DOC)
                 .define(BATCH_SIZE, Type.LONG, 1000L, Importance.HIGH, BATCH_SIZE_DOC)
+                .define(EOF_SENTINEL, Type.STRING, null, Importance.HIGH, EOF_SENTINEL_DOC)
                 ;
     }
 
@@ -66,5 +70,6 @@ public class FileSourceConfig extends AbstractConfig {
     public String getAvroSchema() { return this.getString(AVRO_SCHEMA); }
     public String getAvroSchemaFilename() { return this.getString(AVRO_SCHEMA_FILENAME); }
     public Long getBatchSize() { return this.getLong(BATCH_SIZE); }
+    public String getEofSentinel() { return this.getString(EOF_SENTINEL); }
 }
 

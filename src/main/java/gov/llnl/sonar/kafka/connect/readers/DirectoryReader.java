@@ -151,7 +151,7 @@ public class DirectoryReader extends Reader {
                 currentFileReader.close();
             }
 
-            // Update and possibly purge all read files
+            // Update and possibly purge all readNextRecord files
             for (FileReader currentFileReader : currentFileReaders) {
 
                 // Update file offset

@@ -64,7 +64,8 @@ public class FileSourceTask extends SourceTask {
                     OFFSET_FIELD,
                     config.getFormat(),
                     new JSONObject(config.getFormat()),
-                    0L);
+                    0L,
+                    config.getEofSentinel());
 
             AvroData avroData = new AvroData(2);
             this.connectSchema = avroData.toConnectSchema(avroSchema);

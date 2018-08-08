@@ -18,7 +18,7 @@ public class DirectorySourceConfig extends AbstractConfig {
 
 
     public static final String DIRNAME = "dirname";
-    public static final String DIRNAME_DOC = "The directory to read from.";
+    public static final String DIRNAME_DOC = "The directory to readNextRecord from.";
     public static final String COMPLETED_DIRNAME = "completed.dirname";
     public static final String COMPLETED_DIRNAME_DOC = "The directory to move ingested files into.";
     public static final String TOPIC = "topic";
@@ -43,9 +43,9 @@ public class DirectorySourceConfig extends AbstractConfig {
     public static final String AVRO_SCHEMA_FILENAME = "avro.schema.filename";
     public static final String AVRO_SCHEMA_FILENAME_DOC = "Avro schema filename.";
     public static final String BATCH_ROWS = "batch.rows";
-    public static final String BATCH_ROWS_DOC = "Number of rows to read/ingest at a time from each file.";
+    public static final String BATCH_ROWS_DOC = "Number of rows to readNextRecord/ingest at a time from each file.";
     public static final String BATCH_FILES = "batch.files";
-    public static final String BATCH_FILES_DOC = "Number of files to read/ingest at a time.";
+    public static final String BATCH_FILES_DOC = "Number of files to readNextRecord/ingest at a time.";
     public static final String ZKHOST = "zk.host";
     public static final String ZKHOST_DOC = "ZooKeeper hostname";
     public static final String ZKPORT = "zk.port";
