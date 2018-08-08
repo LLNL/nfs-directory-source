@@ -20,8 +20,9 @@ public class JsonFileStreamParser extends FileStreamParser {
     private GenericData.Record datum;
 
     public JsonFileStreamParser(String filename,
-                                Schema avroSchema) {
-        super(filename, avroSchema);
+                                Schema avroSchema,
+                                String eofSentinel) {
+        super(filename, avroSchema, eofSentinel);
 
         init();
         datumReader = new SpecificDatumReader<>(avroSchema);

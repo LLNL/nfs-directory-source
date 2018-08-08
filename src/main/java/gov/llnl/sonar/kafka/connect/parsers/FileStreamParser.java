@@ -16,6 +16,7 @@ public abstract class FileStreamParser {
     InputStreamReader inputStreamReader = null;
     Schema avroSchema;
     Long currentLine = 0L;
+    String eofSentinel;
 
     abstract void init();
     public abstract Object read() throws ParseException, EOFException;
@@ -53,8 +54,9 @@ public abstract class FileStreamParser {
         }
     }
 
-    FileStreamParser(String filename, Schema avroSchema) {
+    FileStreamParser(String filename, Schema avroSchema, String eofSentinel) {
         this.avroSchema = avroSchema;
+        this.eofSentinel = eofSentinel;
 
         try {
             // NOTE: Subclasses must use EITHER fileInputStream OR dataInputStream.

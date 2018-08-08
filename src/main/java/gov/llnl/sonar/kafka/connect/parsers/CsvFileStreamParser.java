@@ -60,8 +60,9 @@ public class CsvFileStreamParser extends FileStreamParser {
 
     public CsvFileStreamParser(String filename,
                                Schema avroSchema,
+                               String eofSentinel,
                                JSONObject formatOptions) {
-        super(filename, avroSchema);
+        super(filename, avroSchema, eofSentinel);
 
         this.csvFormat = csvFormatFromOptions(formatOptions);
         init();

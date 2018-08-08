@@ -68,7 +68,8 @@ public class DirectorySourceTask extends SourceTask {
                     config.getFormat(),
                     new JSONObject(config.getFormatOptions()),
                     config.getZooKeeperHost(),
-                    config.getZooKeeperPort());
+                    config.getZooKeeperPort(),
+                    config.getEofSentinel());
 
             AvroData avroData = new AvroData(2);
             this.connectSchema = avroData.toConnectSchema(avroSchema);

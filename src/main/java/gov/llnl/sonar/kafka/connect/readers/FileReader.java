@@ -33,6 +33,8 @@ public class FileReader extends Reader {
 
     private Long currentOffset;
 
+    private String eofSentinel;
+
     public Boolean ingestCompleted = false;
 
     public FileReader(String filename,
@@ -43,10 +45,12 @@ public class FileReader extends Reader {
                       String offsetField,
                       String format,
                       JSONObject formatOptions,
-                      Long fileOffset) throws UnknownHostException {
+                      Long fileOffset,
+                      String eofSentinel) throws UnknownHostException {
         this(new File(filename).toPath().toAbsolutePath(),
                 completedDirectoryName, avroSchema, batchSize,
-                partitionField, offsetField, format, formatOptions, fileOffset);
+                partitionField, offsetField, format, formatOptions,
+                fileOffset, eofSentinel);
     }
 
     public FileReader(Path path,
@@ -57,7 +61,8 @@ public class FileReader extends Reader {
                       String offsetField,
                       String format,
                       JSONObject formatOptions,
-                      Long fileOffset)
+                      Long fileOffset,
+                      String eofSentinel)
             throws UnknownHostException {
 
         this.taskID = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
@@ -77,10 +82,10 @@ public class FileReader extends Reader {
 
             switch (format) {
                 case "csv":
-                    this.streamParser = new CsvFileStreamParser(path.toString(), avroSchema, formatOptions);
+                    this.streamParser = new CsvFileStreamParser(path.toString(), avroSchema, eofSentinel, formatOptions);
                     break;
                 case "json":
-                    this.streamParser = new JsonFileStreamParser(path.toString(), avroSchema);
+                    this.streamParser = new JsonFileStreamParser(path.toString(), avroSchema, eofSentinel);
                     break;
                 default:
                     throw new IllegalArgumentException("Invalid file format " + format);

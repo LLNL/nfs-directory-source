@@ -50,6 +50,9 @@ public class DirectorySourceConfig extends AbstractConfig {
     public static final String ZKHOST_DOC = "ZooKeeper hostname";
     public static final String ZKPORT = "zk.port";
     public static final String ZKPORT_DOC = "ZooKeeper port";
+    public static final String EOF_SENTINEL = null;
+    public static final String EOF_SENTINEL_DOC = "String indicating the end of a file." +
+                                                  "If defined, files will not be purged until this is reached";
 
     public static ConfigDef conf() {
         return new ConfigDef()
@@ -64,6 +67,7 @@ public class DirectorySourceConfig extends AbstractConfig {
                 .define(AVRO_SCHEMA_FILENAME, Type.STRING, "", Importance.HIGH, AVRO_SCHEMA_FILENAME_DOC)
                 .define(BATCH_ROWS, Type.LONG, 1000L, Importance.HIGH, BATCH_ROWS_DOC)
                 .define(BATCH_FILES, Type.LONG, 10L, Importance.HIGH, BATCH_FILES_DOC)
+                .define(EOF_SENTINEL, Type.STRING, null, Importance.HIGH, EOF_SENTINEL_DOC)
                 ;
     }
 
@@ -78,5 +82,6 @@ public class DirectorySourceConfig extends AbstractConfig {
     public String getAvroSchemaFilename() { return this.getString(AVRO_SCHEMA_FILENAME); }
     public Long getBatchRows() { return this.getLong(BATCH_ROWS); }
     public Long getBatchFiles() { return this.getLong(BATCH_FILES); }
+    public String getEofSentinel() { return this.getString(EOF_SENTINEL); }
 }
 

@@ -31,6 +31,8 @@ public class DirectoryReader extends Reader {
 
     private FileOffsetManager fileOffsetManager;
 
+    private String eofSentinel;
+
     public DirectoryReader(String dirname,
                            String completedDirectoryName,
                            org.apache.avro.Schema avroSchema,
@@ -41,7 +43,8 @@ public class DirectoryReader extends Reader {
                            String format,
                            JSONObject formatOptions,
                            String zooKeeperHost,
-                           String zooKeeperPort)
+                           String zooKeeperPort,
+                           String eofSentinel)
             throws IOException {
 
         this.taskID = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
@@ -53,6 +56,7 @@ public class DirectoryReader extends Reader {
         this.offsetField = offsetField;
         this.format = format;
         this.formatOptions = formatOptions;
+        this.eofSentinel = eofSentinel;
 
         File dir = new File(dirname);
         dirPath = dir.toPath();
@@ -106,7 +110,8 @@ public class DirectoryReader extends Reader {
                                 offsetField,
                                 format,
                                 formatOptions,
-                                fileOffset.offset);
+                                fileOffset.offset,
+                                eofSentinel);
 
                         readers.add(newFileReader);
 
