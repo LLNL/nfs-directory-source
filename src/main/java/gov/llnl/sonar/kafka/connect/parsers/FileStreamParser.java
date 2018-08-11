@@ -8,6 +8,7 @@ import scala.util.control.Exception;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -17,27 +18,17 @@ import java.util.Arrays;
 import static java.nio.file.AccessMode.READ;
 
 @Slf4j
-public abstract class FileStreamParser extends Reader {
+public abstract class FileStreamParser {
+
+    private FileChannel fileChannel = null;
 
     String filename;
-    FileChannel fileChannel = null;
     Schema avroSchema;
     String eofSentinel;
 
 
     abstract void init();
     public abstract Object readNextRecord() throws ParseException, EOFException;
-
-    @Override
-    public int read(char[] cbuf, int off, int len) throws IOException {
-        ByteBuffer byteBuffer = ByteBuffer.allocate(len);
-        int ret = fileChannel.read(byteBuffer);
-
-        CharBuffer chars = StandardCharsets.ISO_8859_1.decode(byteBuffer);
-        System.arraycopy(chars.array(), 0, cbuf, off, len);
-
-        return ret;
-    }
 
     public void close() throws IOException {
         if (fileChannel != null) {
@@ -64,27 +55,41 @@ public abstract class FileStreamParser extends Reader {
     ByteBuffer buffer = ByteBuffer.allocate(1);
 
     protected String nextLine() throws IOException {
+
+        log.info("nextLine() called! Stack:");
+        log.info(Arrays.toString(Thread.currentThread().getStackTrace()));
+
+
+        if (fileChannel == null) {
+            throw new EOFException("Invalid fileChannel!");
+        }
+
+        buffer.clear();
         StringBuffer line = new StringBuffer();
         while(fileChannel.read(buffer) > 0)
         {
             buffer.flip();
-            for (int i = 0; i < buffer.limit(); i++)
-            {
-                char ch = ((char) buffer.get());
-                if (ch == '\n') {
-                    return line.toString();
-                } else {
-                    line.append(ch);
-                }
+            CharBuffer buf = StandardCharsets.ISO_8859_1.decode(buffer);
+            char ch = buf.get(0);
+            if (ch == '\n') {
+                return line.toString();
+            } else {
+                line.append(ch);
             }
             buffer.clear();
         }
+        if (line.length() != 0) {
+            return line.toString();
+        }
+
         throw new EOFException("End of fileChannel reached!");
     }
 
     public long offset() {
         try {
             return fileChannel.position();
+        } catch (ClosedChannelException e) {
+            return -1L;
         } catch (IOException e) {
             log.error("IOException:", e);
         }

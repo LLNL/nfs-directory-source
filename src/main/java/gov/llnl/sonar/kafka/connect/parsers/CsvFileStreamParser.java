@@ -18,6 +18,7 @@ public class CsvFileStreamParser extends FileStreamParser {
     private CSVFormat csvFormat;
     private CSVParser csvParser;
     private Iterator<CSVRecord> csvRecordIterator;
+    private Boolean skipHeader = false;
 
     private CSVFormat csvFormatFromOptions(JSONObject formatOptions) {
         CSVFormat csvFormat = CSVFormat.DEFAULT;
@@ -71,8 +72,13 @@ public class CsvFileStreamParser extends FileStreamParser {
     @Override
     void init() {
         try {
-            csvParser = csvFormat.parse(this);
-            csvRecordIterator = csvParser.iterator();
+            if (csvFormat.getSkipHeaderRecord()) {
+                skipHeader = true;
+                String headerLine = nextLine();
+                log.info("Using header " + headerLine);
+                String[] header = headerLine.split(csvFormat.getDelimiter() + "");
+                csvFormat = csvFormat.withSkipHeaderRecord(false).withHeader(header);
+            }
         } catch (IOException e) {
             log.error("IOException:", e);
         }
@@ -81,7 +87,19 @@ public class CsvFileStreamParser extends FileStreamParser {
     @Override
     public synchronized Object readNextRecord() throws ParseException, EOFException {
         try {
-            return csvRecordIterator.next().toMap();
+            if (skipHeader && offset() == 0) {
+                nextLine();
+            }
+            String nextLineWithNewline = nextLine() + "\n";
+            log.info("Parsing CSV line: " + nextLineWithNewline);
+            csvParser = csvFormat.parse(new StringReader(nextLineWithNewline));
+            Map<String, String> rawRecord = csvParser.iterator().next().toMap();
+            return rawRecord;
+        } catch (EOFException e) {
+            throw e;
+        } catch (IOException e) {
+            log.error("IOException:", e);
+            throw new ParseException();
         } catch (NoSuchElementException e) {
             throw new EOFException();
         }

@@ -50,7 +50,7 @@ public class DirectorySourceConfig extends AbstractConfig {
     public static final String ZKHOST_DOC = "ZooKeeper hostname";
     public static final String ZKPORT = "zk.port";
     public static final String ZKPORT_DOC = "ZooKeeper port";
-    public static final String EOF_SENTINEL = null;
+    public static final String EOF_SENTINEL = "eof.sentinel";
     public static final String EOF_SENTINEL_DOC = "String indicating the end of a file." +
                                                   "If defined, files will not be purged until this is reached";
 

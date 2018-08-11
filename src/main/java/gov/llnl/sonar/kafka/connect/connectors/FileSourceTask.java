@@ -63,7 +63,7 @@ public class FileSourceTask extends SourceTask {
                     PARTITION_FIELD,
                     OFFSET_FIELD,
                     config.getFormat(),
-                    new JSONObject(config.getFormat()),
+                    new JSONObject(config.getFormatOptions()),
                     0L,
                     config.getEofSentinel());
 
@@ -89,9 +89,9 @@ public class FileSourceTask extends SourceTask {
             if (rawRecords.isEmpty())
                 return null;
 
-            List<SourceRecord> parsedRecords = rawRecords.stream().map((RawRecord r) -> {
-                return r.toSourceRecord(topic, connectSchema, rawRecordConverter);
-            }).collect(Collectors.toList());
+            List<SourceRecord> parsedRecords = rawRecords.stream().map((RawRecord r) ->
+                    r.toSourceRecord(topic, connectSchema, rawRecordConverter))
+                .collect(Collectors.toList());
 
             log.info("Task {}: Read {} records from file {}", taskID, rawRecords.size(), reader.getPath());
 

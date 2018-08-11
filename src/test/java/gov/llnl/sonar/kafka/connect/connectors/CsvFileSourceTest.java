@@ -5,6 +5,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -19,6 +20,7 @@ import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.*;
 public class CsvFileSourceTest extends ConnectTest {
 
     private Path csvTestFile;
+    private Path outputDir;
     private String csvTestSourceConnector;
     private String csvTestSourceTopic;
 
@@ -35,16 +37,18 @@ public class CsvFileSourceTest extends ConnectTest {
 
             log.info("Writing CSV entries to file source");
             BufferedWriter bw = new BufferedWriter(new FileWriter(csvTestFile.toFile()));
-            bw.write("\"id\",\"str\"\n"); // header
-            bw.write("\"1\",\"one\"\n");
-            bw.write("\"2\",\"two\"\n");
-            bw.write("\"3\",\"three\"\n");
-            bw.write("\"4\",\"four\"\n");
-            bw.write("\"5\",\"five\"\n");
-            bw.write("\"6\",\"six\"\n");
-            bw.write("\"7\",\"seven\"\n");
-            bw.write("\"8\",\"eight\"\n");
+            bw.write("id,str\n"); // header
+            bw.write("1,one\n");
+            bw.write("2,two\n");
+            bw.write("3,three\n");
+            bw.write("4,four\n");
+            bw.write("5,five\n");
+            bw.write("6,six\n");
+            bw.write("7,seven\n");
+            bw.write("8,eight\n");
             bw.flush();
+
+            outputDir = Files.createTempDirectory("outputDir");
         } catch (IOException ex) {
             log.error(ex);
         }
@@ -56,9 +60,10 @@ public class CsvFileSourceTest extends ConnectTest {
 
         configProperties.put(FileSourceConfig.FILENAME, csvTestFilename);
         configProperties.put(FileSourceConfig.FORMAT, "csv");
-        configProperties.put(FileSourceConfig.FORMAT_OPTIONS, "");
+        configProperties.put(FileSourceConfig.FORMAT_OPTIONS, "{ \"withHeader\": true }");
         configProperties.put(FileSourceConfig.TOPIC, csvTestSourceTopic);
         configProperties.put(FileSourceConfig.AVRO_SCHEMA, idstrAvroSchemaEscapedString);
+        configProperties.put(FileSourceConfig.COMPLETED_DIRNAME, outputDir.toAbsolutePath().toString());
 
     }
 

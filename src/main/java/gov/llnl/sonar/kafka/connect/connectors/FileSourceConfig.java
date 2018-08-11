@@ -44,7 +44,7 @@ public class FileSourceConfig extends AbstractConfig {
     public static final String AVRO_SCHEMA_FILENAME_DOC = "Avro schema filename.";
     public static final String BATCH_SIZE = "batch.size";
     public static final String BATCH_SIZE_DOC = "Number of lines to readNextRecord/ingest at a time from the file.";
-    public static final String EOF_SENTINEL = null;
+    public static final String EOF_SENTINEL = "eof.sentinel";
     public static final String EOF_SENTINEL_DOC = "String indicating the end of a file." +
             "If defined, files will not be purged until this is reached";
 
