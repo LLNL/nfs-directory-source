@@ -17,7 +17,6 @@ public class JsonFileStreamParser extends FileStreamParser {
 
     private Decoder decoder;
     private SpecificDatumReader<GenericData.Record> datumReader;
-    private GenericData.Record datum;
 
     public JsonFileStreamParser(String filename,
                                 Schema avroSchema,
@@ -36,6 +35,7 @@ public class JsonFileStreamParser extends FileStreamParser {
     public synchronized Object readNextRecord() throws ParseException, EOFException {
 
         try {
+            GenericData.Record datum = new GenericData.Record(avroSchema);
             decoder = DecoderFactory.get().jsonDecoder(avroSchema, nextLine());
             datum = datumReader.read(datum, decoder);
             return datum;

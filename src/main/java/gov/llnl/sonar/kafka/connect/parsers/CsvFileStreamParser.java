@@ -75,7 +75,6 @@ public class CsvFileStreamParser extends FileStreamParser {
             if (csvFormat.getSkipHeaderRecord()) {
                 skipHeader = true;
                 String headerLine = nextLine();
-                log.info("Using header " + headerLine);
                 String[] header = headerLine.split(csvFormat.getDelimiter() + "");
                 csvFormat = csvFormat.withSkipHeaderRecord(false).withHeader(header);
             }
@@ -91,7 +90,6 @@ public class CsvFileStreamParser extends FileStreamParser {
                 nextLine();
             }
             String nextLineWithNewline = nextLine() + "\n";
-            log.info("Parsing CSV line: " + nextLineWithNewline);
             csvParser = csvFormat.parse(new StringReader(nextLineWithNewline));
             Map<String, String> rawRecord = csvParser.iterator().next().toMap();
             return rawRecord;

@@ -5,7 +5,9 @@ import org.apache.avro.generic.GenericData;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static junit.framework.TestCase.assertEquals;
@@ -27,7 +29,7 @@ public abstract class ConnectTest {
 
         log.info("Consuming topic " + topic);
 
-        Set<GenericData.Record> consumedRecords = new HashSet<>();
+        List<GenericData.Record> consumedRecords = new ArrayList<>();
         Consumer consumer = confluent.createConsumer(topic);
 
         while (consumedRecords.size() < trueData.size()) {
@@ -46,7 +48,7 @@ public abstract class ConnectTest {
 
         consumer.close();
 
-        assertEquals(trueData, consumedRecords);
+        assertEquals(trueData, new HashSet<>(consumedRecords));
     }
 
 

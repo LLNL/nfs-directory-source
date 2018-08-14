@@ -56,10 +56,6 @@ public abstract class FileStreamParser {
 
     protected String nextLine() throws IOException {
 
-        log.info("nextLine() called! Stack:");
-        log.info(Arrays.toString(Thread.currentThread().getStackTrace()));
-
-
         if (fileChannel == null) {
             throw new EOFException("Invalid fileChannel!");
         }
@@ -94,7 +90,7 @@ public abstract class FileStreamParser {
     public long offset() {
         try {
             return fileChannel.position();
-        } catch (ClosedChannelException e) {
+        } catch (NullPointerException | ClosedChannelException e) {
             return -1L;
         } catch (IOException e) {
             log.error("IOException:", e);

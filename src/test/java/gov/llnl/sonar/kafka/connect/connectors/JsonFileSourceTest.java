@@ -23,6 +23,7 @@ public class JsonFileSourceTest extends ConnectTest {
     Map<String, String> configProperties = new HashMap<>();
 
     private Path jsonTestFile;
+    private Path outputDir;
     private String jsonTestSourceConnector;
     private String jsonTestSourceTopic;
 
@@ -45,6 +46,8 @@ public class JsonFileSourceTest extends ConnectTest {
             bw.write("{\"id\": 7, \"str\": \"seven\"}\n");
             bw.write("{\"id\": 8, \"str\": \"eight\"}\n");
             bw.flush();
+
+            outputDir = Files.createTempDirectory("outputDir");
         } catch (IOException ex) {
             log.error(ex);
         }
@@ -56,7 +59,8 @@ public class JsonFileSourceTest extends ConnectTest {
 
         configProperties.put(FileSourceConfig.FILENAME, jsonTestFilename);
         configProperties.put(FileSourceConfig.FORMAT, "json");
-        configProperties.put(FileSourceConfig.FORMAT_OPTIONS, "");
+        configProperties.put(FileSourceConfig.FORMAT_OPTIONS, "{}");
+        configProperties.put(FileSourceConfig.COMPLETED_DIRNAME, outputDir.toAbsolutePath().toString());
         configProperties.put(FileSourceConfig.TOPIC, jsonTestSourceTopic);
         configProperties.put(FileSourceConfig.AVRO_SCHEMA, idstrAvroSchemaEscapedString);
 
