@@ -101,15 +101,23 @@ public class DirectorySourceConnector extends SourceConnector {
         }
 
         String completeddirname = connectorConfigs.get(DirectorySourceConfig.COMPLETED_DIRNAME);
-        Path completeddirpath = Paths.get(completeddirname);
-
-        if (!(  Files.exists(completeddirpath) &&
-                Files.isDirectory(completeddirpath) &&
-                Files.isWritable(completeddirpath) &&
-                Files.isExecutable(completeddirpath))) {
+        if (completeddirname == null) {
             for (ConfigValue cv : configValues) {
                 if (cv.name().equals(DirectorySourceConfig.COMPLETED_DIRNAME)) {
-                    cv.addErrorMessage("Specified \"" + DirectorySourceConfig.COMPLETED_DIRNAME + "\" must: exist, be a directory, be writable and executable");
+                    cv.addErrorMessage("Config must contain " + DirectorySourceConfig.COMPLETED_DIRNAME);
+                }
+            }
+        } else {
+            Path completeddirpath = Paths.get(completeddirname);
+
+            if (!(Files.exists(completeddirpath) &&
+                    Files.isDirectory(completeddirpath) &&
+                    Files.isWritable(completeddirpath) &&
+                    Files.isExecutable(completeddirpath))) {
+                for (ConfigValue cv : configValues) {
+                    if (cv.name().equals(DirectorySourceConfig.COMPLETED_DIRNAME)) {
+                        cv.addErrorMessage("Specified \"" + DirectorySourceConfig.COMPLETED_DIRNAME + "\" must: exist, be a directory, be writable and executable");
+                    }
                 }
             }
         }

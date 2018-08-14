@@ -72,14 +72,20 @@ public abstract class FileStreamParser {
             CharBuffer buf = StandardCharsets.ISO_8859_1.decode(buffer);
             char ch = buf.get(0);
             if (ch == '\n') {
-                return line.toString();
+                String lineString = line.toString();
+                if (eofSentinel != null && lineString.equals(eofSentinel))
+                    throw new EOFException("EOF sentinel reached!");
+                return lineString;
             } else {
                 line.append(ch);
             }
             buffer.clear();
         }
         if (line.length() != 0) {
-            return line.toString();
+            String lineString = line.toString();
+            if (eofSentinel != null && lineString.equals(eofSentinel))
+                throw new EOFException("EOF sentinel reached!");
+            return lineString;
         }
 
         throw new EOFException("End of fileChannel reached!");

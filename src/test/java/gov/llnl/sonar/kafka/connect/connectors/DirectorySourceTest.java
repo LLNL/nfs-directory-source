@@ -25,6 +25,7 @@ public class DirectorySourceTest extends ConnectTest {
     Map<String, String> configProperties = new HashMap<>();
 
     private Path testDirectory;
+    private Path outputDirectory;
     private String testDirectorySourceConnector;
     private String testDirectorySourceTopic;
 
@@ -62,6 +63,8 @@ public class DirectorySourceTest extends ConnectTest {
             bw4.write("{\"id\": 8, \"str\": \"eight\"}\n");
             bw4.flush();
 
+            outputDirectory = Files.createTempDirectory("outputDir");
+
         } catch (IOException ex) {
             log.error(ex);
         }
@@ -74,9 +77,12 @@ public class DirectorySourceTest extends ConnectTest {
         configProperties.put("tasks.max", "3");
         configProperties.put(DirectorySourceConfig.DIRNAME, testDirname);
         configProperties.put(DirectorySourceConfig.FORMAT, "json");
-        configProperties.put(DirectorySourceConfig.FORMAT_OPTIONS, "");
+        configProperties.put(DirectorySourceConfig.FORMAT_OPTIONS, "{}");
+        configProperties.put(DirectorySourceConfig.COMPLETED_DIRNAME, outputDirectory.toAbsolutePath().toString());
         configProperties.put(DirectorySourceConfig.TOPIC, testDirectorySourceTopic);
         configProperties.put(DirectorySourceConfig.AVRO_SCHEMA, idstrAvroSchemaEscapedString);
+        configProperties.put(DirectorySourceConfig.ZKHOST, "localhost");
+        configProperties.put(DirectorySourceConfig.ZKPORT, "2181");
 
     }
 
