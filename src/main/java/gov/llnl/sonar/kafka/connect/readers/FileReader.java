@@ -21,7 +21,7 @@ import java.util.Map;
 public class FileReader extends Reader {
     private String taskID;
     private Path path;
-    private Path completedFilePath;
+    private Path completedFilePath = null;
 
     private Long batchSize;
     private String partitionField;
@@ -72,8 +72,9 @@ public class FileReader extends Reader {
 
         try {
             // TODO: handle name collisions /dir/foo/file1 /dir/bar/file1
-            this.completedFilePath = Paths.get(completedDirectoryName,path.getFileName() + ".COMPLETED");
-
+            if (completedDirectoryName != null) {
+                this.completedFilePath = Paths.get(completedDirectoryName, path.getFileName() + ".COMPLETED");
+            }
             if (Files.notExists(path)) {
                 throw new NoSuchFileException(String.format("File %s does not exist!", path));
             }

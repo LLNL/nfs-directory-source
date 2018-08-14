@@ -101,13 +101,7 @@ public class DirectorySourceConnector extends SourceConnector {
         }
 
         String completeddirname = connectorConfigs.get(DirectorySourceConfig.COMPLETED_DIRNAME);
-        if (completeddirname == null) {
-            for (ConfigValue cv : configValues) {
-                if (cv.name().equals(DirectorySourceConfig.COMPLETED_DIRNAME)) {
-                    cv.addErrorMessage("Config must contain " + DirectorySourceConfig.COMPLETED_DIRNAME);
-                }
-            }
-        } else {
+        if (completeddirname != null) {
             Path completeddirpath = Paths.get(completeddirname);
 
             if (!(Files.exists(completeddirpath) &&

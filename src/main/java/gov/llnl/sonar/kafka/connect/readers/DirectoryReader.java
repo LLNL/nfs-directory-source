@@ -166,8 +166,10 @@ public class DirectoryReader extends Reader {
 
                 // Purge the file if completed
                 if (currentFileReader.ingestCompleted) {
-                    log.debug("Task {}: Purging file {}", taskID, currentFileReader.getPath().toString());
-                    currentFileReader.purgeFile();
+                    if (completedDirectoryName != null) {
+                        log.debug("Task {}: Purging file {}", taskID, currentFileReader.getPath().toString());
+                        currentFileReader.purgeFile();
+                    }
                 }
             }
 
