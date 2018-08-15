@@ -8,6 +8,8 @@ Connector sources/sinks for Sonar.
 
 [Deploying](doc/deploying.md)
 
+[Troubleshooting](doc/troubleshooting.md)
+
 
 ## Spooling directory source
 
