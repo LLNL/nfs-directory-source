@@ -59,7 +59,7 @@ public class DirectorySourceConfig extends AbstractConfig {
                 .define(ZKHOST, Type.STRING, "localhost", Importance.HIGH, ZKHOST_DOC)
                 .define(ZKPORT, Type.STRING, "2181", Importance.HIGH, ZKPORT_DOC)
                 .define(DIRNAME, Type.STRING, Importance.HIGH, DIRNAME_DOC)
-                .define(COMPLETED_DIRNAME, null, Type.STRING, Importance.HIGH, COMPLETED_DIRNAME_DOC)
+                .define(COMPLETED_DIRNAME, Type.STRING, null, Importance.HIGH, COMPLETED_DIRNAME_DOC)
                 .define(TOPIC, Type.STRING, Importance.HIGH, TOPIC_DOC)
                 .define(FORMAT, Type.STRING, Importance.HIGH, FORMAT_DOC)
                 .define(FORMAT_OPTIONS, Type.STRING, "{}", Importance.LOW, FORMAT_OPTIONS_DOC)
