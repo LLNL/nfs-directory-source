@@ -6,6 +6,8 @@ Connector sources/sinks for Sonar.
 
 [Testing](doc/testing.md)
 
+[Deploying](doc/deploying.md)
+
 
 ## Spooling directory source
 
