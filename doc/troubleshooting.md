@@ -69,3 +69,9 @@ some more information. Otherwise, make sure all required connector configuration
 You used the `sonar-driver` to do something and got this weird JSON error. 
 This means the server responded with an error status code, rather than a useful JSON message. 
 Check the confluent connect logs for something useful.
+
+## avro.schema.SchemaParseException: Invalid schema name
+
+Avro has some weird/annoying restrictions. You can validate your schema with an Avro schema validator 
+[like this one](https://json-schema-validator.herokuapp.com/avro.jsp) and read further documentation on the restrictions
+in [Avro's documentation](https://avro.apache.org/docs/current/).
