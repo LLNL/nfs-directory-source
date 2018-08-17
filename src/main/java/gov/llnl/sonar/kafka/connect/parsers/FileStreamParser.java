@@ -25,7 +25,7 @@ public abstract class FileStreamParser {
     String filename;
     Schema avroSchema;
     String eofSentinel;
-
+    long currentLine = -1l;
 
     abstract void init();
     public abstract Object readNextRecord() throws ParseException, EOFException;
@@ -71,6 +71,7 @@ public abstract class FileStreamParser {
                 String lineString = line.toString();
                 if (eofSentinel != null && lineString.equals(eofSentinel))
                     throw new EOFException("EOF sentinel reached!");
+                currentLine++;
                 return lineString;
             } else {
                 line.append(ch);
@@ -81,6 +82,7 @@ public abstract class FileStreamParser {
             String lineString = line.toString();
             if (eofSentinel != null && lineString.equals(eofSentinel))
                 throw new EOFException("EOF sentinel reached!");
+            currentLine++;
             return lineString;
         }
 

@@ -75,3 +75,20 @@ Check the confluent connect logs for something useful.
 Avro has some weird/annoying restrictions. You can validate your schema with an Avro schema validator 
 [like this one](https://json-schema-validator.herokuapp.com/avro.jsp) and read further documentation on the restrictions
 in [Avro's documentation](https://avro.apache.org/docs/current/).
+
+## org.apache.kafka.connect.errors.DataException: Found null value for non-optional schema
+
+Your config does not match the data.
+Config properties that may be at fault:
+- "avro.schema" the schema has incorrect fields
+- "format.options" for a CSV, the "columns" within "format.options" is incorrect or undefined (and there is no CSV header)
+
+Otherwise, there may be a null value in the data that is not specified as nullable by the Avro schema.
+You may alter the schema to allow nullable for each field.
+
+## java.lang.OutOfMemoryError: Java heap space
+
+Your batches are too large!
+Make them smaller by specifying a smaller "batch.rows" and/or "batch.files" in the connector config.
+If you're using `create_directory_source_connector`, you can use the `--batch-rows`/`--batch-files` option.
+The total batch size is the product of these two values.
