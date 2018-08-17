@@ -86,31 +86,29 @@ public class CsvFileStreamParser extends FileStreamParser {
     @Override
     public synchronized Object readNextRecord() throws ParseException, EOFException {
 
-        while (true) {
-            final String line;
-            try {
-                if (skipHeader && offset() == 0) {
-                    nextLine();
-                }
-                line = nextLine() + "\n";
-            } catch (EOFException e) {
-                throw e;
-            } catch (IOException e) {
-                log.error("IOException when reading " + filename + ":" + currentLine + ":", e);
-                throw new ParseException();
+        final String line;
+        try {
+            if (skipHeader && offset() == 0) {
+                nextLine();
             }
+            line = nextLine() + "\n";
+        } catch (EOFException e) {
+            throw e;
+        } catch (IOException e) {
+            log.error("IOException when reading " + filename + ":" + currentLine + ":", e);
+            throw new ParseException();
+        }
 
-            try {
-                csvParser = csvFormat.parse(new StringReader(line + "\n"));
-                Map<String, String> rawRecord = csvParser.iterator().next().toMap();
-                return rawRecord;
-            } catch (IOException e) {
-                log.error("IOException when reading " + filename + ":" + currentLine + "\nContents: + " + line + ":", e);
-                throw new ParseException();
-            } catch (NoSuchElementException e) {
-                // probably a comment line in the CSV
-                continue;
-            }
+        try {
+            csvParser = csvFormat.parse(new StringReader(line + "\n"));
+            Map<String, String> rawRecord = csvParser.iterator().next().toMap();
+            return rawRecord;
+        } catch (IOException e) {
+            log.error("IOException when reading " + filename + ":" + currentLine + "\nContents: + " + line + ":", e);
+            throw new ParseException();
+        } catch (NoSuchElementException e) {
+            log.error("Empty record at " + filename + ":" + currentLine + "\nContents: + " + line);
+            return null;
         }
     }
 }
