@@ -1142,6 +1142,13 @@ public class AvroData {
                      || value instanceof GenericEnumSymbol
                      || value instanceof Enum) {
             converted = value.toString();
+          } else if (value instanceof Collection) {
+            Collection<Object> original = (Collection<Object>) value;
+            List<Object> result = new ArrayList<>(original.size());
+            for (Object elem : original) {
+              result.add(elem.toString());
+            }
+            converted = new JSONObject(result).toString();
           } else if (value instanceof Map) {
             // Schema says it's a string, but it's a map
             Map<CharSequence, Object> original = (Map<CharSequence, Object>) value;
@@ -1364,24 +1371,26 @@ public class AvroData {
         break;
 
       case ARRAY:
-        org.apache.avro.Schema elemSchema = schema.getElementType();
-        // Special case for custom encoding of non-string maps as list of key-value records
-        if (elemSchema.getType().equals(org.apache.avro.Schema.Type.RECORD)
-            && NAMESPACE.equals(elemSchema.getNamespace())
-            && MAP_ENTRY_TYPE_NAME.equals(elemSchema.getName())) {
-          if (elemSchema.getFields().size() != 2
-              || elemSchema.getField(KEY_FIELD) == null
-              || elemSchema.getField(VALUE_FIELD) == null) {
-            throw new DataException("Found map encoded as array of key-value pairs, but array "
-                                    + "elements do not match the expected format.");
-          }
-          builder = SchemaBuilder.map(
-              toConnectSchema(elemSchema.getField(KEY_FIELD).schema()),
-              toConnectSchema(elemSchema.getField(VALUE_FIELD).schema())
-          );
-        } else {
-          builder = SchemaBuilder.array(toConnectSchema(schema.getElementType()));
-        }
+        // KCQL can't deal with arrays currently, define as string and convert arrays to json strings later
+        builder = SchemaBuilder.string();
+        // org.apache.avro.Schema elemSchema = schema.getElementType();
+        // // Special case for custom encoding of non-string maps as list of key-value records
+        // if (elemSchema.getType().equals(org.apache.avro.Schema.Type.RECORD)
+        //     && NAMESPACE.equals(elemSchema.getNamespace())
+        //     && MAP_ENTRY_TYPE_NAME.equals(elemSchema.getName())) {
+        //   if (elemSchema.getFields().size() != 2
+        //       || elemSchema.getField(KEY_FIELD) == null
+        //       || elemSchema.getField(VALUE_FIELD) == null) {
+        //     throw new DataException("Found map encoded as array of key-value pairs, but array "
+        //                             + "elements do not match the expected format.");
+        //   }
+        //   builder = SchemaBuilder.map(
+        //       toConnectSchema(elemSchema.getField(KEY_FIELD).schema()),
+        //       toConnectSchema(elemSchema.getField(VALUE_FIELD).schema())
+        //   );
+        // } else {
+        //   builder = SchemaBuilder.array(toConnectSchema(schema.getElementType()));
+        // }
         break;
 
       case MAP:
