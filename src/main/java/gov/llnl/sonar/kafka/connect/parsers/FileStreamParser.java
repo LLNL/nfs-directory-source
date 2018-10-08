@@ -69,8 +69,10 @@ public abstract class FileStreamParser {
             char ch = buf.get(0);
             if (ch == '\n') {
                 String lineString = line.toString();
-                if (eofSentinel != null && lineString.equals(eofSentinel))
+                if (eofSentinel != null && lineString.equals(eofSentinel)) {
+                    close();
                     throw new EOFException("EOF sentinel reached!");
+                }
                 currentLine++;
                 return lineString;
             } else {
@@ -80,12 +82,15 @@ public abstract class FileStreamParser {
         }
         if (line.length() != 0) {
             String lineString = line.toString();
-            if (eofSentinel != null && lineString.equals(eofSentinel))
+            if (eofSentinel != null && lineString.equals(eofSentinel)) {
+                close();
                 throw new EOFException("EOF sentinel reached!");
+            }
             currentLine++;
             return lineString;
         }
 
+        close();
         throw new EOFException("End of fileChannel reached!");
     }
 
