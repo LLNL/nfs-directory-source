@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Stream;
 
 
 @Slf4j
@@ -83,10 +84,10 @@ public class DirectoryReader extends Reader {
 
         List<FileReader> readers = new ArrayList<>();
 
-        try {
+        try(Stream<Path> walk = Files.walk(dirPath)) {
 
             // Walk through all files in dir
-            Iterator<Path> pathWalker = Files.walk(dirPath).filter(Files::isRegularFile).iterator();
+            Iterator<Path> pathWalker = walk.filter(Files::isRegularFile).iterator();
 
             fileOffsetManager.lock();
 
@@ -122,7 +123,7 @@ public class DirectoryReader extends Reader {
                     }
                 }
             }
-        } catch (UncheckedIOException | NoSuchFileException e) {
+        } catch (IOException | UncheckedIOException e) {
             // Don't care about NoSuchFileException, that's just NFS catching up
             if (!(ExceptionUtils.getRootCause(e) instanceof NoSuchFileException)) {
                 log.error("Task {}: {}", taskID, e);
