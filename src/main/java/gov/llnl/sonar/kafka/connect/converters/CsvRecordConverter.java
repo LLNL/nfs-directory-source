@@ -58,6 +58,7 @@ public class CsvRecordConverter extends Converter<Map<String, String>>{
             String key = entry.getKey();
             String value = entry.getValue();
 
+            /*
             List<String> fieldNames = connectSchema.fields().stream()
                     .map((Field f) -> f.name())
                     .collect(Collectors.toList());
@@ -73,6 +74,7 @@ public class CsvRecordConverter extends Converter<Map<String, String>>{
                 log.error("Available fields: {}", String.join(",", fields));
                 throw new DataException("Schema mismatch");
             }
+            */
 
             try {
                 Object parsedValue = stringToConnectObject(value, connectSchema.field(key).schema().type());
