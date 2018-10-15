@@ -17,7 +17,6 @@ public class CsvFileStreamParser extends FileStreamParser {
 
     private CSVFormat csvFormat;
     private CSVParser csvParser;
-    private Iterator<CSVRecord> csvRecordIterator;
     private Boolean skipHeader = false;
 
     private CSVFormat csvFormatFromOptions(JSONObject formatOptions) {

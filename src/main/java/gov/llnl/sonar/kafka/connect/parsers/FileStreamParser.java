@@ -20,88 +20,80 @@ import static java.nio.file.AccessMode.READ;
 @Slf4j
 public abstract class FileStreamParser {
 
-    private FileChannel fileChannel = null;
+    private FileReader fileReader = null;
+    private BufferedReader bufferedReader = null;
 
     String filename;
     Schema avroSchema;
     String eofSentinel;
+
     long currentLine = -1l;
+    long currentByte = -1l;
 
     abstract void init();
     public abstract Object readNextRecord() throws ParseException, EOFException;
 
     public void close() throws IOException {
-        if (fileChannel != null) {
-            fileChannel.close();
-            fileChannel = null;
+        if (bufferedReader != null) {
+            bufferedReader.close();
+            bufferedReader = null;
+        }
+        if (fileReader != null) {
+            fileReader.close();
+            fileReader = null;
         }
     }
 
     public synchronized void seekToOffset(Long offset) throws IOException {
-        fileChannel.position(offset);
+
+        try {
+            close();
+            fileReader = new FileReader(filename);
+            bufferedReader = new BufferedReader(fileReader);
+            bufferedReader.skip(offset);
+            currentByte = offset;
+        } catch (IOException e) {
+            log.error("IOException:", e);
+        }
     }
 
     FileStreamParser(String filename, Schema avroSchema, String eofSentinel) {
-        this.avroSchema = avroSchema;
-        this.eofSentinel = eofSentinel;
-
-        try {
-            fileChannel = FileChannel.open(Paths.get(filename));
-        } catch (IOException e) {
-            log.error("IOException:", e);
-        }
+        this(filename, avroSchema, eofSentinel, 0L);
     }
 
-    ByteBuffer buffer = ByteBuffer.allocate(1);
+    FileStreamParser(String filename, Schema avroSchema, String eofSentinel, long startOffset) {
+        this.filename = filename;
+        this.avroSchema = avroSchema;
+        this.eofSentinel = eofSentinel;
+    }
 
     protected String nextLine() throws IOException {
 
-        if (fileChannel == null) {
-            throw new EOFException("Invalid fileChannel!");
-        }
+        try {
 
-        buffer.clear();
-        StringBuffer line = new StringBuffer();
-        while(fileChannel.read(buffer) > 0)
-        {
-            buffer.flip();
-            CharBuffer buf = StandardCharsets.ISO_8859_1.decode(buffer);
-            char ch = buf.get(0);
-            if (ch == '\n') {
-                String lineString = line.toString();
-                if (eofSentinel != null && lineString.equals(eofSentinel)) {
-                    close();
-                    throw new EOFException("EOF sentinel reached!");
-                }
-                currentLine++;
-                return lineString;
-            } else {
-                line.append(ch);
+            if (bufferedReader == null) {
+                throw new EOFException("Reader closed!");
             }
-            buffer.clear();
-        }
-        if (line.length() != 0) {
-            String lineString = line.toString();
-            if (eofSentinel != null && lineString.equals(eofSentinel)) {
-                close();
+
+            String lineString = bufferedReader.readLine();
+
+            if (lineString == null || (eofSentinel != null && lineString.equals(eofSentinel))) {
                 throw new EOFException("EOF sentinel reached!");
             }
-            currentLine++;
+
+            currentLine += 1;
+            currentByte += lineString.getBytes().length + 1;
+
             return lineString;
+
+        } catch (EOFException e) {
+            close();
+            throw new EOFException("End of file reached!");
         }
 
-        close();
-        throw new EOFException("End of fileChannel reached!");
     }
 
     public long offset() {
-        try {
-            return fileChannel.position();
-        } catch (NullPointerException | ClosedChannelException e) {
-            return -1L;
-        } catch (IOException e) {
-            log.error("IOException:", e);
-        }
-        return -1L;
+        return currentByte;
     }
 }
