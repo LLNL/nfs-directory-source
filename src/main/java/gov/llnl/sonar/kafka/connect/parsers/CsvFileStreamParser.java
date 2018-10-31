@@ -2,10 +2,8 @@ package gov.llnl.sonar.kafka.connect.parsers;
 
 import gov.llnl.sonar.kafka.connect.exceptions.ParseException;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.avro.Schema;
 import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVParser;
-import org.apache.commons.csv.CSVRecord;
+import org.apache.kafka.connect.data.Schema;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -16,8 +14,9 @@ import java.util.*;
 public class CsvFileStreamParser extends FileStreamParser {
 
     private CSVFormat csvFormat;
-    private CSVParser csvParser;
     private Boolean skipHeader = false;
+    private String delimString;
+    private int numColumns;
 
     private CSVFormat csvFormatFromOptions(JSONObject formatOptions) {
         CSVFormat csvFormat = CSVFormat.DEFAULT;
@@ -59,7 +58,7 @@ public class CsvFileStreamParser extends FileStreamParser {
     }
 
     public CsvFileStreamParser(String filename,
-                               Schema avroSchema,
+                               org.apache.avro.Schema avroSchema,
                                String eofSentinel,
                                JSONObject formatOptions) {
         super(filename, avroSchema, eofSentinel);
@@ -71,11 +70,15 @@ public class CsvFileStreamParser extends FileStreamParser {
     @Override
     void init() {
         try {
+            delimString = csvFormat.getDelimiter() + "";
             if (csvFormat.getSkipHeaderRecord()) {
                 skipHeader = true;
                 String headerLine = nextLine();
-                String[] header = headerLine.split(csvFormat.getDelimiter() + "");
+                String[] header = headerLine.split(delimString);
                 csvFormat = csvFormat.withSkipHeaderRecord(false).withHeader(header);
+                numColumns = header.length;
+            } else {
+                numColumns = -1;
             }
         } catch (IOException e) {
             log.error("IOException:", e);
@@ -85,12 +88,14 @@ public class CsvFileStreamParser extends FileStreamParser {
     @Override
     public synchronized Object readNextRecord() throws ParseException, EOFException {
 
-        final String line;
+        String line;
         try {
             if (skipHeader && offset() == 0) {
                 nextLine();
             }
-            line = nextLine() + "\n";
+            do {
+                line = nextLine();
+            } while (line.charAt(0) == csvFormat.getCommentMarker());
         } catch (EOFException e) {
             throw e;
         } catch (IOException e) {
@@ -99,12 +104,7 @@ public class CsvFileStreamParser extends FileStreamParser {
         }
 
         try {
-            csvParser = csvFormat.parse(new StringReader(line + "\n"));
-            Map<String, String> rawRecord = csvParser.iterator().next().toMap();
-            return rawRecord;
-        } catch (IOException e) {
-            log.error("IOException when reading " + filename + ":" + currentLine + "\nContents: + " + line + ":", e);
-            throw new ParseException();
+            return line.split(delimString, numColumns);
         } catch (NoSuchElementException e) {
             log.error("Empty record at " + filename + ":" + currentLine + "\nContents: + " + line);
             return null;

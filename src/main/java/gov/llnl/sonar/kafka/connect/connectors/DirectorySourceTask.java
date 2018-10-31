@@ -57,6 +57,8 @@ public class DirectorySourceTask extends SourceTask {
 
             this.topic = config.getTopic();
 
+            JSONObject formatOptions = new JSONObject(config.getFormatOptions());
+
             this.reader = new DirectoryReader(
                     relativeDirname,
                     completedDirname,
@@ -66,7 +68,7 @@ public class DirectorySourceTask extends SourceTask {
                     PARTITION_FIELD,
                     OFFSET_FIELD,
                     config.getFormat(),
-                    new JSONObject(config.getFormatOptions()),
+                    formatOptions,
                     config.getZooKeeperHost(),
                     config.getZooKeeperPort(),
                     config.getEofSentinel());
@@ -74,7 +76,7 @@ public class DirectorySourceTask extends SourceTask {
             AvroData avroData = new AvroData(2);
             this.connectSchema = avroData.toConnectSchema(avroSchema);
 
-            this.rawRecordConverter = Converter.getConverterFor(avroData, connectSchema, config.getFormat());
+            this.rawRecordConverter = Converter.getConverterFor(avroData, connectSchema, config.getFormat(), formatOptions);
 
             log.info("Task {}: Added ingestion directory {}", taskID, reader.getCanonicalDirname());
 

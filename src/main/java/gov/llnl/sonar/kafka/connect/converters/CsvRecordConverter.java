@@ -12,12 +12,14 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class CsvRecordConverter extends Converter<Map<String, String>>{
+public class CsvRecordConverter extends Converter<String[]>{
 
     private final Schema connectSchema;
+    private final List<String> header;
 
-    public CsvRecordConverter(Schema schema) {
-        connectSchema = schema;
+    public CsvRecordConverter(Schema schema, List<String> header) {
+        this.connectSchema = schema;
+        this.header = header;
     }
 
     public Object stringToConnectObject(String s, Schema.Type type) {
@@ -51,36 +53,21 @@ public class CsvRecordConverter extends Converter<Map<String, String>>{
     }
 
     @Override
-    public Object convert(Map<String, String> recordMap) {
+    public Object convert(String[] csvTokens) {
         Struct record = new Struct(connectSchema);
 
-        for (Map.Entry<String, String> entry : recordMap.entrySet()) {
-            String key = entry.getKey();
-            String value = entry.getValue();
+        int i = 0;
+        for (String column : header) {
 
-            /*
-            List<String> fieldNames = connectSchema.fields().stream()
-                    .map((Field f) -> f.name())
-                    .collect(Collectors.toList());
-
-            if (!fieldNames.contains(key)) {
-                log.error("Requested field: {}", key);
-                log.error("Value: {}", value);
-
-                List<String> fields = connectSchema.fields().stream()
-                        .map((Field f) -> "{" + f.name() + ":" + f.schema().type().getName() + "}")
-                        .collect(Collectors.toList());
-
-                log.error("Available fields: {}", String.join(",", fields));
-                throw new DataException("Schema mismatch");
-            }
-            */
+            String value = csvTokens[i++];
 
             try {
-                Object parsedValue = stringToConnectObject(value, connectSchema.field(key).schema().type());
-                record = record.put(key, parsedValue);
+                Object parsedValue = stringToConnectObject(value, connectSchema.field(column).schema().type());
+                record = record.put(column, parsedValue);
             } catch (NumberFormatException e) {
-                log.error("Failed to parse key {}, value {}, expected type {}", key, value, connectSchema.field(key).schema().type(), e);
+                log.error("Failed to parse column {}, value {}, expected type {}",
+                        column, value,
+                        connectSchema.field(column).schema().type(), e);
             }
         }
 

@@ -55,6 +55,7 @@ public class FileSourceTask extends SourceTask {
 
             this.topic = config.getTopic();
 
+            JSONObject formatOptions = new JSONObject(config.getFormatOptions());
             this.reader = new FileReader(
                     relativeFilename,
                     config.getCompletedDirname(),
@@ -63,14 +64,14 @@ public class FileSourceTask extends SourceTask {
                     PARTITION_FIELD,
                     OFFSET_FIELD,
                     config.getFormat(),
-                    new JSONObject(config.getFormatOptions()),
+                    formatOptions,
                     0L,
                     config.getEofSentinel());
 
             AvroData avroData = new AvroData(2);
             this.connectSchema = avroData.toConnectSchema(avroSchema);
 
-            this.rawRecordConverter = Converter.getConverterFor(avroData, connectSchema, config.getFormat());
+            this.rawRecordConverter = Converter.getConverterFor(avroData, connectSchema, config.getFormat(), formatOptions);
 
         } catch (Exception ex) {
             log.error("Task {}: {}", taskID, ex);
