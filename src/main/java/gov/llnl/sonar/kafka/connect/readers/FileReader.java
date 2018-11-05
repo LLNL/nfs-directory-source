@@ -97,10 +97,13 @@ public class FileReader extends Reader {
         }
     }
 
-    public void purgeFile() {
+    public void purgeFile(boolean delete) {
         try {
             log.debug("Task {}: Purging ingested file {}", taskID, path);
-            Files.move(path, completedFilePath);
+            if (delete)
+                Files.delete(path);
+            else
+                Files.move(path, completedFilePath);
         } catch (NoSuchFileException | FileAlreadyExistsException e) {
             // do nothing
         } catch(IOException e) {

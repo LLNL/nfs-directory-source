@@ -33,6 +33,7 @@ public class DirectoryReader extends Reader {
     private FileOffsetManager fileOffsetManager;
 
     private String eofSentinel;
+    private boolean deleteIngested;
 
     public DirectoryReader(String dirname,
                            String completedDirectoryName,
@@ -45,7 +46,8 @@ public class DirectoryReader extends Reader {
                            JSONObject formatOptions,
                            String zooKeeperHost,
                            String zooKeeperPort,
-                           String eofSentinel)
+                           String eofSentinel,
+                           boolean deleteIngested)
             throws IOException {
 
         this.taskID = InetAddress.getLocalHost().getHostName() + "(" + Thread.currentThread().getId() + ")";
@@ -58,6 +60,7 @@ public class DirectoryReader extends Reader {
         this.format = format;
         this.formatOptions = formatOptions;
         this.eofSentinel = eofSentinel;
+        this.deleteIngested = deleteIngested;
 
         File dir = new File(dirname);
         dirPath = dir.toPath();
@@ -168,8 +171,8 @@ public class DirectoryReader extends Reader {
                 // Purge the file if completed
                 if (currentFileReader.ingestCompleted) {
                     if (completedDirectoryName != null) {
-                        log.debug("Task {}: Purging file {}", taskID, currentFileReader.getPath().toString());
-                        currentFileReader.purgeFile();
+                        log.info("Task {}: Purging ingested file {}", taskID, currentFileReader.getPath().toString());
+                        currentFileReader.purgeFile(deleteIngested);
                     }
                 }
             }
