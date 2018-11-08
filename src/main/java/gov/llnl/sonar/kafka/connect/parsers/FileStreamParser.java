@@ -3,25 +3,15 @@ package gov.llnl.sonar.kafka.connect.parsers;
 import gov.llnl.sonar.kafka.connect.exceptions.ParseException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
-import scala.util.control.Exception;
 
 import java.io.*;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Paths;
-import java.util.Arrays;
-
-import static java.nio.file.AccessMode.READ;
 
 @Slf4j
 public abstract class FileStreamParser {
 
     private FileReader fileReader = null;
     private BufferedReader bufferedReader = null;
+    private int bufferSize = 8192;
 
     String filename;
     Schema avroSchema;
@@ -49,7 +39,7 @@ public abstract class FileStreamParser {
         try {
             close();
             fileReader = new FileReader(filename);
-            bufferedReader = new BufferedReader(fileReader);
+            bufferedReader = new BufferedReader(fileReader, bufferSize);
             bufferedReader.skip(offset);
             currentByte = offset;
         } catch (IOException e) {

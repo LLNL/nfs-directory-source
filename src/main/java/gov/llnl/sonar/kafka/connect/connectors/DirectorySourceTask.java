@@ -3,7 +3,6 @@ package gov.llnl.sonar.kafka.connect.connectors;
 import gov.llnl.sonar.kafka.connect.converters.Converter;
 import gov.llnl.sonar.kafka.connect.readers.DirectoryReader;
 import gov.llnl.sonar.kafka.connect.readers.RawRecord;
-import gov.llnl.sonar.kafka.connect.util.OptionsParser;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
 import io.confluent.connect.avro.AvroData;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +36,9 @@ public class DirectorySourceTask extends SourceTask {
     public String version() {
         return VersionUtil.getVersion();
     }
+
+    ArrayList<RawRecord> rawRecords;
+
 
     @Override
     public void start(Map<String, String> map) {
@@ -74,6 +76,8 @@ public class DirectorySourceTask extends SourceTask {
                     config.getEofSentinel(),
                     config.getDeleteIngested());
 
+            this.rawRecords = new ArrayList<>((int)(config.getBatchFiles()*config.getBatchRows()));
+
             AvroData avroData = new AvroData(2);
             this.connectSchema = avroData.toConnectSchema(avroSchema);
 
@@ -95,8 +99,6 @@ public class DirectorySourceTask extends SourceTask {
     @Override
     public synchronized List<SourceRecord> poll() throws InterruptedException {
 
-        ArrayList<RawRecord> rawRecords = new ArrayList<>();
-
         Long mem;
         if ((mem = approximateAllocatableMemory()) < POLLING_MEMORY_REQUIRED) {
             log.warn("Task {}: Available memory {} less than required amount {}", taskID, mem, POLLING_MEMORY_REQUIRED);
@@ -107,6 +109,7 @@ public class DirectorySourceTask extends SourceTask {
         }
 
         try {
+            rawRecords.clear();
             Long numRecordsRead = reader.read(rawRecords, context);
 
             if (numRecordsRead > 0) {
