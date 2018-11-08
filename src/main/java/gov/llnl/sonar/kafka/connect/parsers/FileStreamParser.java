@@ -10,15 +10,15 @@ import java.io.*;
 public abstract class FileStreamParser {
 
     private FileReader fileReader = null;
-    private BufferedReader bufferedReader = null;
+    protected BufferedReader bufferedReader = null;
     private int bufferSize = 8192;
 
     String filename;
     Schema avroSchema;
     String eofSentinel;
 
-    long currentLine = -1l;
-    long currentByte = -1l;
+    protected long currentLine = -1l;
+    protected long currentByte = -1l;
 
     abstract void init();
     public abstract Object readNextRecord() throws ParseException, EOFException;

@@ -3,7 +3,7 @@ package gov.llnl.sonar.kafka.connect.parsers;
 import gov.llnl.sonar.kafka.connect.exceptions.ParseException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
-import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.DataException;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -34,6 +34,7 @@ public class CsvFileStreamParser extends FileStreamParser {
                     for(int i = 0; i < arr.length(); i++){
                         columns.add(arr.getString(i));
                     }
+                    numColumns = columns.size();
                     csvFormat = csvFormat.withHeader(columns.toArray(new String[0]));
                     break;
                 case ("delimiter"):
@@ -67,47 +68,83 @@ public class CsvFileStreamParser extends FileStreamParser {
         init();
     }
 
+    int delimChar;
+    StringBuilder sb = new StringBuilder();
+
     @Override
     void init() {
         try {
             delimString = csvFormat.getDelimiter() + "";
+            delimChar = Character.getNumericValue(csvFormat.getDelimiter());
+
             if (csvFormat.getSkipHeaderRecord()) {
                 skipHeader = true;
-                String headerLine = nextLine();
-                String[] header = headerLine.split(delimString);
-                csvFormat = csvFormat.withSkipHeaderRecord(false).withHeader(header);
-                numColumns = header.length;
+                ArrayList<String> header = readLineIntoTokens();
+                csvFormat = csvFormat.withSkipHeaderRecord(false).withHeader(header.toArray(new String[header.size()]));
+                numColumns = header.size();
             } else {
                 numColumns = -1;
             }
+
         } catch (IOException e) {
             log.error("IOException:", e);
         }
     }
 
+    final int newlineChar = Character.getNumericValue('\n');
+
+    private void skipLine() throws IOException {
+        int c;
+        do {
+            c = bufferedReader.read();
+            currentByte++;
+            if (c == -1) {
+                throw new EOFException("End of file reached!");
+            }
+        } while (c != newlineChar);
+        currentLine++;
+    }
+
+    private ArrayList<String> readLineIntoTokens() throws IOException {
+        ArrayList<String> lineTokens;
+        if (numColumns > 0) {
+            lineTokens = new ArrayList<>(numColumns);
+        } else {
+            lineTokens = new ArrayList<>();
+        }
+
+        while(true) {
+            int c = bufferedReader.read();
+            currentByte++;
+            if (c == -1) {
+                throw new EOFException("EOF sentinel reached!");
+            } else if (c == newlineChar) {
+                currentLine++;
+                break;
+            } else if (c == delimChar) {
+                lineTokens.add(sb.toString());
+                sb.setLength(0);
+            } else {
+                sb.append(c);
+            }
+        }
+
+        if (numColumns > 0 && lineTokens.size() != numColumns) {
+            throw new DataException("Invalid number of columns in " + filename + ":" + String.valueOf(currentLine-1));
+        }
+        return lineTokens;
+    }
     @Override
     public synchronized Object readNextRecord() throws ParseException, EOFException {
 
-        String line;
         try {
-            if (skipHeader && offset() == 0) {
-                nextLine();
-            }
-            do {
-                line = nextLine();
-            } while (line.charAt(0) == csvFormat.getCommentMarker());
+            if (skipHeader && offset() == 0)
+                skipLine();
+            return readLineIntoTokens();
         } catch (EOFException e) {
             throw e;
         } catch (IOException e) {
-            log.error("IOException when reading " + filename + ":" + currentLine + ":", e);
-            throw new ParseException();
-        }
-
-        try {
-            return line.split(delimString, numColumns);
-        } catch (NoSuchElementException e) {
-            log.error("Empty record at " + filename + ":" + currentLine + "\nContents: + " + line);
-            return null;
+            throw new ParseException("IOException when reading " + filename + ":" + String.valueOf(currentLine-1));
         }
     }
 }
