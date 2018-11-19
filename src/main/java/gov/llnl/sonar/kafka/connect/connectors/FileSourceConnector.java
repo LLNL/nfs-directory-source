@@ -49,10 +49,10 @@ public class FileSourceConnector extends SourceConnector {
         Config c = super.validate(connectorConfigs);
 
         List<ConfigValue> configValues = c.configValues();
-        if (connectorConfigs.containsKey("avro.schema") == connectorConfigs.containsKey("avro.schema.filename")) {
+        if (connectorConfigs.containsKey("avro.schema") == connectorConfigs.containsKey("avro.schema.fileName")) {
             for (ConfigValue cv : configValues) {
                 if (cv.name().equals("avro.schema")) {
-                    cv.addErrorMessage("Connector requires either avro.schema or avro.schema.filename (and not both)!");
+                    cv.addErrorMessage("Connector requires either avro.schema or avro.schema.fileName (and not both)!");
                 }
             }
         }

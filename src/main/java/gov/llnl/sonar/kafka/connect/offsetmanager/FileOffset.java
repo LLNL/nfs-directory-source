@@ -1,4 +1,4 @@
-package gov.llnl.sonar.kafka.connect.readers;
+package gov.llnl.sonar.kafka.connect.offsetmanager;
 
 import java.io.Serializable;
 
@@ -17,7 +17,7 @@ public class FileOffset implements Serializable {
 
     @Override
     public String toString() {
-        return String.format("FileOffset(offset=%d,locked=%b,completed=%b)", offset, locked, completed);
+        return String.format("FileOffset(getByteOffset=%d,locked=%b,completed=%b)", offset, locked, completed);
     }
 }
 

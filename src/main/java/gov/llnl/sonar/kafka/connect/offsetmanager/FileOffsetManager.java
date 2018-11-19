@@ -1,4 +1,4 @@
-package gov.llnl.sonar.kafka.connect.readers;
+package gov.llnl.sonar.kafka.connect.offsetmanager;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.SerializationUtils;
@@ -67,14 +67,14 @@ public class FileOffsetManager {
 
     private void reset() throws Exception {
 
-        //log.debug("Thread {}: Checking for file offset base path {}", threadID, fileOffsetBasePath);
+        //log.debug("Thread {}: Checking for file getByteOffset base path {}", threadID, fileOffsetBasePath);
 
         if (client.checkExists().creatingParentContainersIfNeeded().forPath(fileOffsetBasePath) != null) {
-            //log.debug("Thread {}: Deleting previous file offset base path {}", threadID, fileOffsetBasePath);
+            //log.debug("Thread {}: Deleting previous file getByteOffset base path {}", threadID, fileOffsetBasePath);
             client.delete().deletingChildrenIfNeeded().forPath(fileOffsetBasePath);
         }
 
-        //log.debug("Thread {}: Creating file offset base path {}, locks, and offsets", threadID, fileOffsetBasePath);
+        //log.debug("Thread {}: Creating file getByteOffset base path {}, locks, and offsets", threadID, fileOffsetBasePath);
 
         client.create().creatingParentContainersIfNeeded().forPath(fileOffsetBasePath);
         client.create().forPath(ZKPaths.makePath(fileOffsetBasePath, LOCKS_SUBPATH));
@@ -103,27 +103,27 @@ public class FileOffsetManager {
 
         String actualFileOffsetPath = makeOffsetPath(fileOffsetPath);
 
-        //log.debug("Thread {}: Uploading file offset {}: {}", threadID, actualFileOffsetPath, fileOffset.toString());
+        //log.debug("Thread {}: Uploading file getByteOffset {}: {}", threadID, actualFileOffsetPath, fileOffset.toString());
 
         client.create().orSetData().forPath(actualFileOffsetPath, SerializationUtils.serialize(fileOffset));
 
-        //log.debug("Thread {}: Uploaded file offset {}: {}", threadID, actualFileOffsetPath, fileOffset.toString());
+        //log.debug("Thread {}: Uploaded file getByteOffset {}: {}", threadID, actualFileOffsetPath, fileOffset.toString());
     }
 
     /** MUST BE CALLED WITH LOCK */
-    FileOffset downloadFileOffsetWithLock(String fileOffsetPath) throws Exception {
+    public FileOffset downloadFileOffsetWithLock(String fileOffsetPath) throws Exception {
 
         FileOffset fileOffset;
         String actualFileOffsetPath = makeOffsetPath(fileOffsetPath);
 
-        //log.debug("Thread {}: Downloading file offset if exists: {}", threadID, actualFileOffsetPath);
+        //log.debug("Thread {}: Downloading file getByteOffset if exists: {}", threadID, actualFileOffsetPath);
 
         if (client.checkExists().creatingParentContainersIfNeeded().forPath(actualFileOffsetPath) == null) {
-            //log.debug("Thread {}: File offset does not exist, creating and locking it: {} ", threadID, actualFileOffsetPath);
+            //log.debug("Thread {}: File getByteOffset does not exist, creating and locking it: {} ", threadID, actualFileOffsetPath);
             fileOffset = new FileOffset(0L, true, false);
             client.create().forPath(actualFileOffsetPath, SerializationUtils.serialize(fileOffset));
         } else {
-            //log.debug("Thread {}: File offset exists, getting it: {} ", threadID, actualFileOffsetPath);
+            //log.debug("Thread {}: File getByteOffset exists, getting it: {} ", threadID, actualFileOffsetPath);
             byte[] fileOffsetBytes = client.getData().forPath(actualFileOffsetPath);
             fileOffset = SerializationUtils.deserialize(fileOffsetBytes);
             if (fileOffset.locked || fileOffset.completed) {
@@ -134,7 +134,7 @@ public class FileOffsetManager {
             }
         }
 
-        //log.debug("Thread {}: Downloaded file offset {}: {}", threadID, actualFileOffsetPath, fileOffset);
+        //log.debug("Thread {}: Downloaded file getByteOffset {}: {}", threadID, actualFileOffsetPath, fileOffset);
 
         return fileOffset;
     }

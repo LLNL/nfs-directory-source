@@ -17,7 +17,7 @@ public class FileSourceConfig extends AbstractConfig {
         this(conf(), parsedConfig);
     }
 
-    public static final String FILENAME = "filename";
+    public static final String FILENAME = "fileName";
     public static final String FILENAME_DOC = "The file to readNextRecord from.";
     public static final String COMPLETED_DIRNAME = "completed.dirname";
     public static final String COMPLETED_DIRNAME_DOC = "The directory to move ingested files into";
@@ -40,8 +40,8 @@ public class FileSourceConfig extends AbstractConfig {
             "    {\"name\": \"str\", \"type\": \"string\"},\n" +
             "  ]\n" +
             "}";
-    public static final String AVRO_SCHEMA_FILENAME = "avro.schema.filename";
-    public static final String AVRO_SCHEMA_FILENAME_DOC = "Avro schema filename.";
+    public static final String AVRO_SCHEMA_FILENAME = "avro.schema.fileName";
+    public static final String AVRO_SCHEMA_FILENAME_DOC = "Avro schema fileName.";
     public static final String BATCH_SIZE = "batch.size";
     public static final String BATCH_SIZE_DOC = "Number of lines to readNextRecord/ingest at a time from the file.";
     public static final String EOF_SENTINEL = "eof.sentinel";

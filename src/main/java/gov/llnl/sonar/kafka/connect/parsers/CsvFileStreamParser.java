@@ -1,111 +1,98 @@
 package gov.llnl.sonar.kafka.connect.parsers;
 
-import gov.llnl.sonar.kafka.connect.exceptions.ParseException;
+import gov.llnl.sonar.kafka.connect.converters.CsvRecordConverter;
+import io.confluent.connect.avro.AvroData;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.csv.CSVFormat;
 import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.*;
+import java.nio.file.Path;
 import java.util.*;
 
 @Slf4j
 public class CsvFileStreamParser extends FileStreamParser {
 
-    private CSVFormat csvFormat;
-    private Boolean skipHeader = false;
-    private String delimString;
+    // CSV semantics
     private int numColumns;
+    private String[] columns;
+    private int delimChar = (int)',';
+    private int commentChar = (int)'#';
+    private boolean hasHeader = true;
 
-    private CSVFormat csvFormatFromOptions(JSONObject formatOptions) {
-        CSVFormat csvFormat = CSVFormat.DEFAULT;
+    // Vars for parsing
+    private StringBuilder sb = new StringBuilder();
+    private CsvRecordConverter csvRecordConverter;
+
+    public CsvFileStreamParser(Path filePath,
+                               JSONObject formatOptions,
+                               AvroData avroData,
+                               org.apache.avro.Schema avroSchema,
+                               org.apache.kafka.connect.data.Schema connectSchema,
+                               String eofSentinel,
+                               int bufferSize,
+                               long byteOffset,
+                               String partitionField,
+                               String offsetField) throws IOException {
+        super(filePath,
+              formatOptions,
+              avroData,
+              avroSchema,
+              connectSchema,
+              eofSentinel,
+              bufferSize,
+              byteOffset,
+              partitionField,
+              offsetField);
+
+        parseCsvFormatOptions(formatOptions);
+        parseHeader();
+
+        csvRecordConverter = new CsvRecordConverter(connectSchema, columns);
+    }
+
+    private void parseHeader() throws IOException {
+        if (hasHeader) {
+            columns = readCsvLineIntoTokens();
+            numColumns = columns.length;
+        } else if (columns == null) {
+            throw new IllegalArgumentException("No header and no columns specified for CSV parser!");
+        }
+    }
+
+    private void parseCsvFormatOptions(JSONObject formatOptions) {
         for (String option : formatOptions.keySet()) {
             switch (option) {
                 case ("withHeader"):
-                    boolean withHeader = formatOptions.getBoolean(option);
-                    if (withHeader) {
-                        csvFormat = csvFormat.withFirstRecordAsHeader();
-                    }
+                    hasHeader = formatOptions.getBoolean(option);
                     break;
                 case ("columns"):
                     JSONArray arr = formatOptions.getJSONArray(option);
-                    List<String> columns = new ArrayList<>();
+                    columns = new String[arr.length()];
                     for(int i = 0; i < arr.length(); i++){
-                        columns.add(arr.getString(i));
+                        columns[i] = arr.getString(i);
                     }
-                    numColumns = columns.size();
-                    csvFormat = csvFormat.withHeader(columns.toArray(new String[0]));
+                    numColumns = columns.length;
                     break;
                 case ("delimiter"):
-                    char delimiter = formatOptions.getString(option).charAt(0);
-                    csvFormat = csvFormat.withDelimiter(delimiter);
-                    break;
-                case ("quoteChar"):
-                    char quoteChar = formatOptions.getString(option).charAt(0);
-                    csvFormat = csvFormat.withQuote(quoteChar);
+                    delimChar = formatOptions.getString(option).charAt(0);
                     break;
                 case ("commentChar"):
-                    char commentChar = formatOptions.getString(option).charAt(0);
-                    csvFormat = csvFormat.withCommentMarker(commentChar);
-                    break;
-                case ("ignoreSurroundingSpaces"):
-                    boolean ignore = formatOptions.getBoolean(option);
-                    csvFormat = csvFormat.withIgnoreSurroundingSpaces(ignore);
+                    commentChar = formatOptions.getString(option).charAt(0);
                     break;
             }
         }
-        return csvFormat;
     }
 
-    public CsvFileStreamParser(String filename,
-                               org.apache.avro.Schema avroSchema,
-                               String eofSentinel,
-                               JSONObject formatOptions) {
-        super(filename, avroSchema, eofSentinel);
+    private String[] readCsvLineIntoTokens() throws IOException {
 
-        this.csvFormat = csvFormatFromOptions(formatOptions);
-        init();
-    }
-
-    int delimChar;
-    StringBuilder sb = new StringBuilder();
-
-    @Override
-    void init() {
-        try {
-            delimString = csvFormat.getDelimiter() + "";
-            delimChar = Character.getNumericValue(csvFormat.getDelimiter());
-
-            if (csvFormat.getSkipHeaderRecord()) {
-                skipHeader = true;
-                ArrayList<String> header = readLineIntoTokens();
-                csvFormat = csvFormat.withSkipHeaderRecord(false).withHeader(header.toArray(new String[header.size()]));
-                numColumns = header.size();
-            } else {
-                numColumns = -1;
-            }
-
-        } catch (IOException e) {
-            log.error("IOException:", e);
+        if (bufferedReader == null) {
+            throw new EOFException("EOF reached!");
         }
-    }
 
-    final int newlineChar = Character.getNumericValue('\n');
-
-    private void skipLine() throws IOException {
-        int c;
-        do {
-            c = bufferedReader.read();
-            currentByte++;
-            if (c == -1) {
-                throw new EOFException("End of file reached!");
-            }
-        } while (c != newlineChar);
-        currentLine++;
-    }
-
-    private ArrayList<String> readLineIntoTokens() throws IOException {
+        // Container for tokens to return
         ArrayList<String> lineTokens;
         if (numColumns > 0) {
             lineTokens = new ArrayList<>(numColumns);
@@ -113,39 +100,52 @@ public class CsvFileStreamParser extends FileStreamParser {
             lineTokens = new ArrayList<>();
         }
 
+        // Reset StringBuilder
+        sb.setLength(0);
+        boolean firstChar = true;
         while(true) {
             int c = bufferedReader.read();
-            currentByte++;
+            byteOffset++;
+
             if (c == -1) {
-                throw new EOFException("EOF sentinel reached!");
-            } else if (c == newlineChar) {
-                currentLine++;
+                throw new EOFException("EOF reached!");
+            } else if (firstChar && c == commentChar) {
+                // Commented line, skip
+                skipLine();
+            } else if (c == newLineChar) {
+                // Build token, reset StringBuilder, stop reading
+                lineTokens.add(sb.toString());
+                sb.setLength(0);
                 break;
             } else if (c == delimChar) {
+                // Build token, reset StringBuilder
                 lineTokens.add(sb.toString());
                 sb.setLength(0);
             } else {
-                sb.append(c);
+                // Add char to current StringBuilder
+                sb.append((char)c);
             }
+
+            firstChar = false;
         }
 
+        // Check length of tokens against columns
         if (numColumns > 0 && lineTokens.size() != numColumns) {
-            throw new DataException("Invalid number of columns in " + filename + ":" + String.valueOf(currentLine-1));
+            throw new DataException("Invalid number of columns in " + fileName + " before byte offset " + String.valueOf(byteOffset));
         }
-        return lineTokens;
-    }
-    @Override
-    public synchronized Object readNextRecord() throws ParseException, EOFException {
 
-        try {
-            if (skipHeader && offset() == 0)
-                skipLine();
-            return readLineIntoTokens();
-        } catch (EOFException e) {
-            throw e;
-        } catch (IOException e) {
-            throw new ParseException("IOException when reading " + filename + ":" + String.valueOf(currentLine-1));
-        }
+        // Return tokens as String[]
+        return lineTokens.toArray(new String[lineTokens.size()]);
+    }
+
+    @Override
+    public synchronized SourceRecord readNextRecord(String topic) throws IOException {
+        return new SourceRecord(
+                sourcePartition,
+                getSourceOffset(),
+                topic,
+                connectSchema,
+                csvRecordConverter.convert(readCsvLineIntoTokens()));
     }
 }
 

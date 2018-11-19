@@ -18,7 +18,7 @@ public abstract class ConnectTest {
     ConfluentDriver confluent;
 
     public void setup() {
-        confluent = new ConfluentDriver("/Users/gimenez1/Home/local/src/confluent-4.0.0/bin");
+        confluent = new ConfluentDriver("/Users/gimenez1/Home/local/src/confluent-5.0.1/bin");
     }
 
     public void teardown() {

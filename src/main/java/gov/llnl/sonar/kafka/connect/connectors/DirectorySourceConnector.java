@@ -1,6 +1,6 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
-import gov.llnl.sonar.kafka.connect.readers.FileOffsetManager;
+import gov.llnl.sonar.kafka.connect.offsetmanager.FileOffsetManager;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.config.Config;
@@ -116,7 +116,7 @@ public class DirectorySourceConnector extends SourceConnector {
             }
         }
 
-        // Must have avro.schema or avro.schema.filename
+        // Must have avro.schema or avro.schema.fileName
         if (connectorConfigs.containsKey(DirectorySourceConfig.AVRO_SCHEMA) == connectorConfigs.containsKey(DirectorySourceConfig.AVRO_SCHEMA_FILENAME)) {
             for (ConfigValue cv : configValues) {
                 if (cv.name().equals(DirectorySourceConfig.AVRO_SCHEMA)) {
@@ -127,7 +127,7 @@ public class DirectorySourceConnector extends SourceConnector {
 
         // Hacking into here since this runs only once when a connector is started
         try {
-            log.info("{}: creating file offset manager", this.getClass());
+            log.info("{}: creating file getByteOffset manager", this.getClass());
 
             // Get configs
             Path absolutePath = Paths.get(connectorConfigs.get(DirectorySourceConfig.DIRNAME)).toAbsolutePath();
@@ -135,7 +135,7 @@ public class DirectorySourceConnector extends SourceConnector {
             String zooKeeperHost = connectorConfigs.get(DirectorySourceConfig.ZKHOST);
             String zooKeeperPort = connectorConfigs.get(DirectorySourceConfig.ZKPORT);
 
-            // Create and reset file offset manager
+            // Create and reset file getByteOffset manager
             FileOffsetManager fileOffsetManager = new FileOffsetManager(zooKeeperHost, zooKeeperPort, absoluteDirname, true);
             fileOffsetManager.close();
         } catch (Exception e) {

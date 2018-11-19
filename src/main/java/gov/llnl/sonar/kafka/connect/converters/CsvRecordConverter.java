@@ -7,19 +7,17 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
 import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Arrays;
 
 @Slf4j
-public class CsvRecordConverter extends Converter<String[]>{
+public class CsvRecordConverter {
 
     private final Schema connectSchema;
-    private final List<String> header;
+    private final String[] columns;
 
-    public CsvRecordConverter(Schema schema, List<String> header) {
+    public CsvRecordConverter(Schema schema, String[] columns) {
         this.connectSchema = schema;
-        this.header = header;
+        this.columns = columns;
     }
 
     public Object stringToConnectObject(String s, Schema.Type type) {
@@ -52,12 +50,11 @@ public class CsvRecordConverter extends Converter<String[]>{
         return null;
     }
 
-    @Override
-    public Object convert(String[] csvTokens) {
+    public Struct convert(String[] csvTokens) {
         Struct record = new Struct(connectSchema);
 
         int i = 0;
-        for (String column : header) {
+        for (String column : columns) {
 
             String value = csvTokens[i++];
 
@@ -68,6 +65,13 @@ public class CsvRecordConverter extends Converter<String[]>{
                 log.error("Failed to parse column {}, value {}, expected type {}",
                         column, value,
                         connectSchema.field(column).schema().type(), e);
+            } catch (NullPointerException e) {
+                log.error("Failed to get schema for column {}", column);
+                log.error("Schema contents: " +
+                        Arrays.toString(connectSchema.fields().stream().map(
+                                f -> f.name() + " : " + f.schema().name()).toArray()
+                        )
+                );
             }
         }
 

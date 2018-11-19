@@ -40,8 +40,8 @@ public class DirectorySourceConfig extends AbstractConfig {
             "    {\"name\": \"str\", \"type\": \"string\"},\n" +
             "  ]\n" +
             "}";
-    public static final String AVRO_SCHEMA_FILENAME = "avro.schema.filename";
-    public static final String AVRO_SCHEMA_FILENAME_DOC = "Avro schema filename.";
+    public static final String AVRO_SCHEMA_FILENAME = "avro.schema.fileName";
+    public static final String AVRO_SCHEMA_FILENAME_DOC = "Avro schema fileName.";
     public static final String BATCH_ROWS = "batch.rows";
     public static final String BATCH_ROWS_DOC = "Number of rows to readNextRecord/ingest at a time from each file.";
     public static final String BATCH_FILES = "batch.files";
