@@ -53,7 +53,7 @@ public class CsvFileStreamParser extends FileStreamParser {
         csvRecordConverter = new CsvRecordConverter(connectSchema, columns);
     }
 
-    private void parseHeader() throws IOException {
+    private synchronized void parseHeader() throws IOException {
         if (columns == null && hasHeader) {
             columns = readCsvLineIntoTokens();
             numColumns = columns.length;
@@ -86,7 +86,7 @@ public class CsvFileStreamParser extends FileStreamParser {
         }
     }
 
-    private String[] readCsvLineIntoTokens() throws IOException {
+    private synchronized String[] readCsvLineIntoTokens() throws IOException {
 
         if (bufferedReader == null) {
             throw new EOFException("EOF reached!");

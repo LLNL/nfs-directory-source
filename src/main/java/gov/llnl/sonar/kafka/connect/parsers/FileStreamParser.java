@@ -149,7 +149,7 @@ public abstract class FileStreamParser {
         }
     }
 
-    public void close() throws IOException {
+    public synchronized void close() throws IOException {
         if (bufferedReader != null) {
             bufferedReader.close();
             bufferedReader = null;
