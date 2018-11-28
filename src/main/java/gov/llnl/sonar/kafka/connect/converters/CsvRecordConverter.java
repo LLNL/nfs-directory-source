@@ -1,7 +1,6 @@
 package gov.llnl.sonar.kafka.connect.converters;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;

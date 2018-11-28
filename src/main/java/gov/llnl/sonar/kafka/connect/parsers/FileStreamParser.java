@@ -3,12 +3,15 @@ package gov.llnl.sonar.kafka.connect.parsers;
 import io.confluent.connect.avro.AvroData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.json.JSONObject;
 
-import java.io.*;
-import java.nio.file.*;
+import java.io.BufferedReader;
+import java.io.EOFException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
 
@@ -31,7 +34,7 @@ public abstract class FileStreamParser {
     long byteOffset;
     FileReader fileReader;
     BufferedReader bufferedReader;
-    final int newLineChar = (int)'\n';
+    final int newLineChar = (int) '\n';
 
     // Kafka vars
     String partitionField;
@@ -80,7 +83,7 @@ public abstract class FileStreamParser {
         return Collections.singletonMap(offsetField, byteOffset);
     }
 
-    public synchronized void deleteFile() throws IOException{
+    public synchronized void deleteFile() throws IOException {
         Files.delete(filePath);
     }
 

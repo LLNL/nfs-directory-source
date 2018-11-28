@@ -1,7 +1,6 @@
 package gov.llnl.sonar.kafka.connect.parsers;
 
 import gov.llnl.sonar.kafka.connect.exceptions.ParseException;
-import io.confluent.connect.avro.AvroConverter;
 import io.confluent.connect.avro.AvroData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.AvroTypeException;
