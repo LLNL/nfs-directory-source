@@ -113,10 +113,10 @@ public class DirectorySourceTask extends SourceTask {
 
         try(Stream<Path> walk = Files.walk(dirPath)) {
 
+            fileOffsetManager.lock();
+
             // Walk through all files in dir
             Iterator<Path> pathWalker = walk.filter(Files::isRegularFile).iterator();
-
-            fileOffsetManager.lock();
 
             while (readers.size() < config.getBatchFiles() && pathWalker.hasNext()) {
 
@@ -144,9 +144,9 @@ public class DirectorySourceTask extends SourceTask {
             }
         } catch (Exception e) {
             log.error("Task {}: {}", taskID, e);
+        } finally {
+            fileOffsetManager.unlock();
         }
-
-        fileOffsetManager.unlock();
 
         return readers;
     }
