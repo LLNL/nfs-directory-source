@@ -110,7 +110,7 @@ public abstract class FileStreamParser {
         close();
 
         // Random access at offset
-        randomAccessFile = new RandomAccessFile(fileName, "rb");
+        randomAccessFile = new RandomAccessFile(fileName, "r");
         randomAccessFile.seek(offset);
         byteOffset = offset;
 
