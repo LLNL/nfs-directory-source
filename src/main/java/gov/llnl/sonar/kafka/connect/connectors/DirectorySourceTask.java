@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+/**
+ * The Kafka Connect source task for ingesting records from a directory.
+ */
 @Slf4j
 public class DirectorySourceTask extends SourceTask {
 
@@ -77,6 +80,8 @@ public class DirectorySourceTask extends SourceTask {
             // Set members
             this.dirPath = Paths.get(config.getDirname());
             this.completedDirPath = Paths.get(config.getCompletedDirname());
+
+            // Create a FileOffsetManager for managing offsets to all ingestion files in the ingest directory
             this.fileOffsetManager = new FileOffsetManager(
                     config.getZooKeeperHost(),
                     config.getZooKeeperPort(),
@@ -96,6 +101,12 @@ public class DirectorySourceTask extends SourceTask {
                 (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
     }
 
+    /**
+     * Locks up to `config.getBatchFiles()` files for ingestion (via fileOffsetManager)
+     * and creates a FileStreamParser for each.
+     *
+     * @return The list of FileStreamParser objects to read from
+     */
     private List<FileStreamParser> getNextFileStreamParsers() {
 
         List<FileStreamParser> readers = new ArrayList<>();
@@ -143,6 +154,8 @@ public class DirectorySourceTask extends SourceTask {
     @Override
     public synchronized List<SourceRecord> poll() throws InterruptedException {
 
+        // HACK: This checks if we are close exceeding the available Java heap space
+        //       and pauses ingestion for a second if so.
         Long mem;
         if ((mem = approximateAllocatableMemory()) < POLLING_MEMORY_REQUIRED) {
             log.warn("Task {}: Available memory {} less than required amount {}", taskID, mem, POLLING_MEMORY_REQUIRED);
@@ -160,6 +173,7 @@ public class DirectorySourceTask extends SourceTask {
             // Read from each FileStreamParser
             for (FileStreamParser currentFileStreamParser : currentFileStreamParsers) {
 
+                // Create a FileOffset object to upload after reading
                 FileOffset currentFileOffset = new FileOffset();
 
                 // Read batches of rows
@@ -192,6 +206,7 @@ public class DirectorySourceTask extends SourceTask {
                     }
 
                 } finally {
+                    // Upload the new file offset
                     fileOffsetManager.uploadFileOffset(
                             currentFileStreamParser.getFilePath().toString(),
                             currentFileOffset);

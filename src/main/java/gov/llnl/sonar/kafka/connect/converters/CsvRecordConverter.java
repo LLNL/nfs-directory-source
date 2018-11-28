@@ -8,17 +8,33 @@ import org.apache.kafka.connect.errors.DataException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+/**
+ * Class for performing conversions from a set of string tokens parsed from a CSV file to a Kafka Connect record.
+ */
 @Slf4j
 public class CsvRecordConverter {
 
     private final Schema connectSchema;
     private final String[] columns;
 
+    /**
+     * Constructor.
+     *
+     * @param schema The Kafka Connect schema of the columns to convert into
+     * @param columns The ordered names of columns for the incoming string tokens
+     */
     public CsvRecordConverter(Schema schema, String[] columns) {
         this.connectSchema = schema;
         this.columns = columns;
     }
 
+    /**
+     * Converter for a single string token.
+     *
+     * @param s The string token to convert
+     * @param type The Kafka Connect schema type to convert into
+     * @return The typed Kafka Connect token
+     */
     public Object stringToConnectObject(String s, Schema.Type type) {
 
         switch (type) {
@@ -49,6 +65,12 @@ public class CsvRecordConverter {
         return null;
     }
 
+    /**
+     * Converter for the string token array (a single CSV row).
+     *
+     * @param csvTokens The string token array to convert
+     * @return The Kafka Connect record with the schema provided in the constructor
+     */
     public Struct convert(String[] csvTokens) {
         Struct record = new Struct(connectSchema);
 

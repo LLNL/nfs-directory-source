@@ -88,7 +88,7 @@ You may alter the schema to allow nullable for each field.
 
 ## java.lang.OutOfMemoryError: Java heap space
 
-Your batches are too large!
-Make them smaller by specifying a smaller "batch.rows" and/or "batch.files" in the connector config.
-If you're using `create_directory_source_connector`, you can use the `--batch-rows`/`--batch-files` option.
-The total batch size is the product of these two values.
+Your batches are too large and/or your number of tasks is too high!
+Try specifying a smaller "batch.rows" and/or "batch.files" and/or "tasks.max" in the connector config.
+If you're using `create_directory_source_connector`, you can use the `--batch-rows`/`--batch-files`/`--tasks-max` options.
+The total batch size is the product of rows*files.

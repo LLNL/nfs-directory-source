@@ -2,9 +2,25 @@ package gov.llnl.sonar.kafka.connect.offsetmanager;
 
 import java.io.Serializable;
 
+/**
+ * Represents the current read state of a file.
+ * Instances of FileOffset are meant to be serialized into Zookeeper nodes (via FileOffsetManager) for concurrent access.
+ */
 public class FileOffset implements Serializable {
+
+    /**
+     * Current read offset, in bytes.
+     */
     Long offset;
+
+    /**
+     * Whether the file is currently locked for reading.
+     */
     boolean locked;
+
+    /**
+     * Whether the file has been fully read.
+     */
     boolean completed;
 
     private static final long serialVersionUID = 1L;

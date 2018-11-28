@@ -100,6 +100,8 @@ public class DirectorySourceConnector extends SourceConnector {
             }
         }
 
+        // Must have valid competed dir
+        // TODO: allow for delete-on-ingest without a specified completed dir
         String completeddirname = connectorConfigs.get(DirectorySourceConfig.COMPLETED_DIRNAME);
         if (completeddirname != null) {
             Path completeddirpath = Paths.get(completeddirname);
@@ -125,9 +127,12 @@ public class DirectorySourceConnector extends SourceConnector {
             }
         }
 
-        // Hacking into here since this runs only once when a connector is started
+        // This validation is run once per connector installation, so here we also initialize the file offset manager
+        // with no contents (reset=true).
+        // The DirectorySourceTask instances will then use the initialized file offset Zookeeper nodes
+        // without having to create them.
         try {
-            log.info("{}: creating file getByteOffset manager", this.getClass());
+            log.info("{}: creating file offset manager", this.getClass());
 
             // Get configs
             Path absolutePath = Paths.get(connectorConfigs.get(DirectorySourceConfig.DIRNAME)).toAbsolutePath();

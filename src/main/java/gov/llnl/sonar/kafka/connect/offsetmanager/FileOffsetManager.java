@@ -14,6 +14,11 @@ import org.apache.curator.utils.ZKPaths;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+/**
+ * Object for managing distributed file offsets for concurrent ingestion.
+ * Uses Apache Curator (which uses Zookeeper) to enforce global, process/thread wide locks on FileOffset objects.
+ */
+
 @Slf4j
 public class FileOffsetManager {
 
@@ -25,11 +30,23 @@ public class FileOffsetManager {
 
     private InterProcessLock lock;
 
-    static Long offsetFileTTL = 30L*1000L;
+    final static Long offsetFileTTL = 30L*1000L;
 
-    static String LOCKS_SUBPATH = "locks";
-    static String OFFSETS_SUBPATH = "offsets";
+    final static String LOCKS_SUBPATH = "locks";
+    final static String OFFSETS_SUBPATH = "offsets";
 
+    /**
+     * Constructor that creates a Curator client, initializes an InterProcessLock, and Zookeeper nodes
+     * for a provided directory.
+     * For a directory /usr/foo, will create a mirror Zookeeper directory /usr/foo that manages locks to
+     * all files in /usr/foo.
+     *
+     * @param zooKeeperHost Zookeeper host to connect to (e.g. localhost)
+     * @param zooKeeperPort Zookeeper port to connect to (e.g. 2181)
+     * @param fileOffsetBasePath Provided directory to create locks for
+     * @param reset Whether to initialize the directory as empty (reset)
+     * @throws Exception Probably from Curator
+     */
     public FileOffsetManager(String zooKeeperHost, String zooKeeperPort, String fileOffsetBasePath, boolean reset) throws Exception {
         this.threadID = Thread.currentThread().getId();
         this.fileOffsetBasePath = fileOffsetBasePath;
@@ -65,6 +82,11 @@ public class FileOffsetManager {
         //log.debug("Thread {}: Lock initialized", threadID);
     }
 
+    /**
+     * Delete all entries in the file offset directory (offsets/lock) and create new ones.
+     *
+     * @throws Exception
+     */
     private void reset() throws Exception {
 
         //log.debug("Thread {}: Checking for file getByteOffset base path {}", threadID, fileOffsetBasePath);
@@ -94,11 +116,28 @@ public class FileOffsetManager {
         return "FileOffsetManager(Path=" + fileOffsetBasePath + ", Locked=" + lockString + ")";
     }
 
+    /**
+     * Provided a file path string under the file offset directory,
+     * creates a Zookeeper node name under "offsets" within the file offset directory
+     * e.g. if offset directory is "/usr/foo" and filePath is "/usr/foo/bar/file.txt",
+     * creates Zookeeper node name "/usr/foo/offsets/bar/file.txt".
+     *
+     * @param filePath File path string for which to create an offsets Zookeeper node
+     * @return Zookeeper path for new offsets node.
+     */
     private String makeOffsetPath(String filePath) {
         Path relativePath = Paths.get(fileOffsetBasePath).relativize(Paths.get(filePath)).normalize();
         return ZKPaths.makePath(fileOffsetBasePath, OFFSETS_SUBPATH, relativePath.toString());
     }
 
+    /**
+     * Uploads the provided FileOffset to the appropriate Zookeeper node managing the provided file offset path.
+     * Effectively updates the status of the file offset.
+     *
+     * @param fileOffsetPath The path of the file for which to update the file offset
+     * @param fileOffset The new file offset
+     * @throws Exception
+     */
     public void uploadFileOffset(String fileOffsetPath, FileOffset fileOffset) throws Exception {
 
         String actualFileOffsetPath = makeOffsetPath(fileOffsetPath);
@@ -110,7 +149,14 @@ public class FileOffsetManager {
         //log.debug("Thread {}: Uploaded file getByteOffset {}: {}", threadID, actualFileOffsetPath, fileOffset.toString());
     }
 
-    /** MUST BE CALLED WITH LOCK */
+    /**
+     * Downloads the FileOffset for a provided file, initializing a new one if it doesn't exist.
+     * IMPORTANT: This function is not atomic and therefore must be called inside lock()/unlock()!
+     *
+     * @param fileOffsetPath The file for which to download the file offset
+     * @return The file offset
+     * @throws Exception
+     */
     public FileOffset downloadFileOffsetWithLock(String fileOffsetPath) throws Exception {
 
         FileOffset fileOffset;
@@ -139,7 +185,9 @@ public class FileOffsetManager {
         return fileOffset;
     }
 
-
+    /**
+     * Obtains the global (process/thread-wide) lock for this FileOffsetManager instance.
+     */
     public void lock() {
         try {
             //log.debug("Thread {}: Acquiring lock for {}", threadID, fileOffsetBasePath);
@@ -150,6 +198,9 @@ public class FileOffsetManager {
         }
     }
 
+    /**
+     * Releases the global (process/thread-wide) lock for this FileOffsetManager instance.
+     */
     public void unlock() {
         if(lock.isAcquiredInThisProcess()) {
             try {
