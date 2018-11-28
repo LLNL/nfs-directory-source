@@ -6,10 +6,7 @@ import org.apache.avro.Schema;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.EOFException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -32,7 +29,8 @@ public abstract class FileStreamParser {
     // File reading vars
     int bufferSize;
     long byteOffset;
-    FileReader fileReader;
+    RandomAccessFile randomAccessFile;
+    FileInputStream fileInputStream;
     BufferedReader bufferedReader;
     final int newLineChar = (int) '\n';
 
@@ -110,10 +108,15 @@ public abstract class FileStreamParser {
 
     public synchronized void seekToOffset(Long offset) throws IOException {
         close();
-        fileReader = new FileReader(fileName);
-        bufferedReader = new BufferedReader(fileReader, bufferSize);
-        bufferedReader.skip(offset);
+
+        // Random access at offset
+        randomAccessFile = new RandomAccessFile(fileName, "rb");
+        randomAccessFile.seek(offset);
         byteOffset = offset;
+
+        // Create input stream and reader at seek'ed file
+        fileInputStream = new FileInputStream(randomAccessFile.getFD());
+        bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream), bufferSize);
     }
 
     synchronized void skipLine() throws IOException {
@@ -154,9 +157,13 @@ public abstract class FileStreamParser {
             bufferedReader.close();
             bufferedReader = null;
         }
-        if (fileReader != null) {
-            fileReader.close();
-            fileReader = null;
+        if (fileInputStream != null) {
+            fileInputStream.close();
+            fileInputStream = null;
+        }
+        if (randomAccessFile != null) {
+            randomAccessFile.close();
+            randomAccessFile = null;
         }
     }
 }
