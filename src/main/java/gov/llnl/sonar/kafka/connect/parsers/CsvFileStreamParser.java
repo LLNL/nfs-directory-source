@@ -17,7 +17,7 @@ public class CsvFileStreamParser extends FileStreamParser {
 
     // CSV semantics
     private int numColumns;
-    private String[] columns;
+    private String[] columns = null;
     private int delimChar = (int)',';
     private int commentChar = (int)'#';
     private boolean hasHeader = true;
@@ -54,7 +54,7 @@ public class CsvFileStreamParser extends FileStreamParser {
     }
 
     private void parseHeader() throws IOException {
-        if (hasHeader) {
+        if (columns == null && hasHeader) {
             columns = readCsvLineIntoTokens();
             numColumns = columns.length;
         } else if (columns == null) {

@@ -119,8 +119,9 @@ public class DirectorySourceTask extends SourceTask {
                 // If not locked or completed, lock it and create a reader
                 if (fileOffset != null) {
                     try {
-                        readers.add(fileStreamParserBuilder.build(p));
-                        log.debug("Task {}: Created file reader for {}: {}", taskID, p.toString(), fileOffset);
+                        FileStreamParser newFileStreamParser = fileStreamParserBuilder.build(p);
+                        newFileStreamParser.seekToOffset(fileOffset.getOffset());
+                        readers.add(newFileStreamParser);
                     } catch (Exception e) {
                         log.error("Task {}: {}", taskID, e);
                     }
@@ -160,19 +161,41 @@ public class DirectorySourceTask extends SourceTask {
             // Read from each FileStreamParser
             for (FileStreamParser currentFileStreamParser : currentFileStreamParsers) {
 
+                FileOffset currentFileOffset = new FileOffset();
+
                 // Read batches of rows
                 int rows = 0;
                 try {
+
                     for (rows = 0; rows < config.getBatchRows(); rows++) {
                         records.add(currentFileStreamParser.readNextRecord(config.getTopic()));
                     }
+
+                    currentFileOffset.setOffset(currentFileStreamParser.getByteOffset());
+                    currentFileOffset.setCompleted(false);
+                    currentFileOffset.setLocked(false);
+
                 } catch (EOFException e) {
                     log.info("Task {}: Reached end of file {}", taskID, currentFileStreamParser.getFileName());
+
+                    // Keep lock and flag as completed
+                    currentFileOffset.setOffset(-1L);
+                    currentFileOffset.setCompleted(true);
+                    currentFileOffset.setLocked(true);
+
+                    // TODO: set TTL on zk file offset node so it doesn't stay forever
+
+                    // Deal with completed file
                     if (config.getDeleteIngested()) {
                         currentFileStreamParser.deleteFile();
                     } else if (config.getCompletedDirname() != null) {
                         currentFileStreamParser.moveFileIntoDirectory(dirPath, completedDirPath);
                     }
+
+                } finally {
+                    fileOffsetManager.uploadFileOffset(
+                            currentFileStreamParser.getFilePath().toString(),
+                            currentFileOffset);
                 }
 
                 if (rows > 0) {

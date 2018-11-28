@@ -95,11 +95,11 @@ public class FileOffsetManager {
     }
 
     private String makeOffsetPath(String filePath) {
-        Path relativePath = Paths.get(fileOffsetBasePath).relativize(Paths.get(filePath));
+        Path relativePath = Paths.get(fileOffsetBasePath).relativize(Paths.get(filePath)).normalize();
         return ZKPaths.makePath(fileOffsetBasePath, OFFSETS_SUBPATH, relativePath.toString());
     }
 
-    void uploadFileOffset(String fileOffsetPath, FileOffset fileOffset) throws Exception {
+    public void uploadFileOffset(String fileOffsetPath, FileOffset fileOffset) throws Exception {
 
         String actualFileOffsetPath = makeOffsetPath(fileOffsetPath);
 

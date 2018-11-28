@@ -101,6 +101,10 @@ public abstract class FileStreamParser {
         Files.move(filePath, completedFilePath);
     }
 
+    public long getByteOffset() {
+        return byteOffset;
+    }
+
     public synchronized void seekToOffset(Long offset) throws IOException {
         close();
         fileReader = new FileReader(fileName);
@@ -128,12 +132,11 @@ public abstract class FileStreamParser {
             }
 
             String lineString = bufferedReader.readLine();
+            byteOffset += lineString.getBytes().length + 1;
 
             if (lineString == null || (eofSentinel != null && lineString.equals(eofSentinel))) {
                 throw new EOFException("EOF sentinel reached!");
             }
-
-            byteOffset += lineString.getBytes().length + 1;
 
             return lineString;
 

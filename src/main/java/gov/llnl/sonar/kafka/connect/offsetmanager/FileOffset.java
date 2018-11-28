@@ -9,7 +9,10 @@ public class FileOffset implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    FileOffset(Long offset, boolean locked, boolean completed) {
+    public FileOffset() {
+    }
+
+    public FileOffset(Long offset, boolean locked, boolean completed) {
         this.offset = offset;
         this.locked = locked;
         this.completed = completed;
@@ -17,7 +20,23 @@ public class FileOffset implements Serializable {
 
     @Override
     public String toString() {
-        return String.format("FileOffset(getByteOffset=%d,locked=%b,completed=%b)", offset, locked, completed);
+        return String.format("FileOffset(offset=%d,locked=%b,completed=%b)", offset, locked, completed);
+    }
+
+    public void setOffset(Long offset) {
+        this.offset = offset;
+    }
+
+    public void setLocked(boolean locked) {
+        this.locked = locked;
+    }
+
+    public void setCompleted(boolean completed) {
+        this.completed = completed;
+    }
+
+    public Long getOffset() {
+        return offset;
     }
 }
 
