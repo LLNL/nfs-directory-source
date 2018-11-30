@@ -1,11 +1,11 @@
 package gov.llnl.sonar.kafka.connect.parsers;
 
+import gov.llnl.sonar.kafka.connect.offsetmanager.FileOffset;
 import io.confluent.connect.avro.AvroData;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class FileStreamParserBuilder {
 
@@ -59,11 +59,7 @@ public class FileStreamParserBuilder {
         this.offsetField = offsetField;
     }
 
-    public FileStreamParser build(String fileName) throws IllegalArgumentException, IOException {
-        return build(Paths.get(fileName));
-    }
-
-    public FileStreamParser build(Path filePath) throws IllegalArgumentException, IOException {
+    public FileStreamParser build(Path filePath, FileOffset offset) throws IllegalArgumentException, ParseException, IOException {
 
         if (avroSchema == null) {
             throw new IllegalArgumentException("FileStreamParserBuilder requires an avroSchema!");
@@ -79,7 +75,7 @@ public class FileStreamParserBuilder {
                         connectSchema,
                         eofSentinel,
                         bufferSize,
-                        0L,
+                        offset,
                         partitionField,
                         offsetField);
             case "json":
@@ -91,7 +87,7 @@ public class FileStreamParserBuilder {
                         connectSchema,
                         eofSentinel,
                         bufferSize,
-                        0L,
+                        offset,
                         partitionField,
                         offsetField);
             default:

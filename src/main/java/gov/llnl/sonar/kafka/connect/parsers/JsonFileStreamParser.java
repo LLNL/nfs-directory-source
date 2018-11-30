@@ -1,6 +1,6 @@
 package gov.llnl.sonar.kafka.connect.parsers;
 
-import gov.llnl.sonar.kafka.connect.exceptions.ParseException;
+import gov.llnl.sonar.kafka.connect.offsetmanager.FileOffset;
 import io.confluent.connect.avro.AvroData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.AvroTypeException;
@@ -8,7 +8,6 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.json.JSONObject;
 
@@ -27,7 +26,7 @@ public class JsonFileStreamParser extends FileStreamParser {
                                org.apache.kafka.connect.data.Schema connectSchema,
                                String eofSentinel,
                                int bufferSize,
-                               long byteOffset,
+                               FileOffset offset,
                                String partitionField,
                                String offsetField) throws IOException {
         super(filePath,
@@ -37,7 +36,7 @@ public class JsonFileStreamParser extends FileStreamParser {
               connectSchema,
               eofSentinel,
               bufferSize,
-              byteOffset,
+              offset,
               partitionField,
               offsetField);
 
@@ -45,7 +44,7 @@ public class JsonFileStreamParser extends FileStreamParser {
     }
 
     @Override
-    public synchronized SourceRecord readNextRecord(String topic) throws ParseException, EOFException {
+    public synchronized SourceRecord readNextRecord(String topic) throws EOFException, ParseException, IOException {
 
         try {
             GenericData.Record datum = new GenericData.Record(avroSchema);
@@ -58,17 +57,7 @@ public class JsonFileStreamParser extends FileStreamParser {
                     connectSchema,
                     avroData.toConnectData(avroSchema, datum).value());
         } catch (AvroTypeException e) {
-            log.error("AvroTypeException at {}:{}", fileName, e);
-            throw new ParseException();
-        } catch (DataException e) {
-            log.error("DataException at {}:{}", fileName, e);
-        } catch (EOFException e) {
-            throw e;
-        } catch (IOException e) {
-            log.error("IOException:", e);
-            throw new ParseException();
+            throw new ParseException(this, e.getMessage());
         }
-
-        return null;
     }
 }

@@ -1,5 +1,6 @@
 package gov.llnl.sonar.kafka.connect.parsers;
 
+import gov.llnl.sonar.kafka.connect.offsetmanager.FileOffset;
 import io.confluent.connect.avro.AvroData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
@@ -9,6 +10,7 @@ import org.json.JSONObject;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.MessageFormat;
 import java.util.Collections;
 import java.util.Map;
 
@@ -28,7 +30,7 @@ public abstract class FileStreamParser {
 
     // File reading vars
     int bufferSize;
-    long byteOffset;
+    FileOffset offset;
     RandomAccessFile randomAccessFile;
     FileInputStream fileInputStream;
     BufferedReader bufferedReader;
@@ -40,7 +42,7 @@ public abstract class FileStreamParser {
     Map<String, String> sourcePartition;
 
     // Abstract functions
-    public abstract SourceRecord readNextRecord(String topic) throws IOException;
+    public abstract SourceRecord readNextRecord(String topic) throws EOFException, ParseException, IOException;
 
     public FileStreamParser(Path filePath,
                             JSONObject formatOptions,
@@ -49,7 +51,7 @@ public abstract class FileStreamParser {
                             org.apache.kafka.connect.data.Schema connectSchema,
                             String eofSentinel,
                             int bufferSize,
-                            long byteOffset,
+                            FileOffset offset,
                             String partitionField,
                             String offsetField) throws IOException {
         this.filePath = filePath;
@@ -60,13 +62,13 @@ public abstract class FileStreamParser {
         this.connectSchema = connectSchema;
         this.eofSentinel = eofSentinel;
         this.bufferSize = bufferSize;
-        this.byteOffset = byteOffset;
+        this.offset = offset;
         this.partitionField = partitionField;
         this.offsetField = offsetField;
 
         this.sourcePartition = Collections.singletonMap(partitionField, fileName);
 
-        seekToOffset(byteOffset);
+        seekToOffset(offset);
     }
 
     public String getFileName() {
@@ -78,7 +80,7 @@ public abstract class FileStreamParser {
     }
 
     public Map<String, Long> getSourceOffset() {
-        return Collections.singletonMap(offsetField, byteOffset);
+        return Collections.singletonMap(offsetField, offset.getByteOffset());
     }
 
     public synchronized void deleteFile() throws IOException {
@@ -102,17 +104,33 @@ public abstract class FileStreamParser {
         Files.move(filePath, completedFilePath);
     }
 
-    public long getByteOffset() {
-        return byteOffset;
+    public FileOffset getOffset() {
+        return offset;
     }
 
-    public synchronized void seekToOffset(Long offset) throws IOException {
+    public void unlock() {
+        offset.setLocked(false);
+    }
+
+    public void complete(boolean delete, Path dirPath, Path completedDirPath) throws IOException {
+        offset.setLocked(true);
+        offset.setCompleted(true);
+
+        if (delete) {
+            Files.delete(filePath);
+        } else {
+            moveFileIntoDirectory(dirPath, completedDirPath);
+        }
+    }
+
+    public synchronized void seekToOffset(FileOffset offset) throws IOException {
         close();
 
         // Random access at offset
         randomAccessFile = new RandomAccessFile(fileName, "r");
-        randomAccessFile.seek(offset);
-        byteOffset = offset;
+        randomAccessFile.seek(offset.getByteOffset());
+
+        this.offset = offset;
 
         // Create input stream and reader at seek'ed file
         fileInputStream = new FileInputStream(randomAccessFile.getFD());
@@ -123,11 +141,12 @@ public abstract class FileStreamParser {
         int c;
         do {
             c = bufferedReader.read();
-            byteOffset++;
+            offset.incrementByteOffset(1L);
             if (c == -1) {
                 throw new EOFException("End of file reached!");
             }
         } while (c != newLineChar);
+        offset.incrementLineOffset(1L);
     }
 
     synchronized String nextLine() throws IOException {
@@ -138,17 +157,23 @@ public abstract class FileStreamParser {
             }
 
             String lineString = bufferedReader.readLine();
-            byteOffset += lineString.getBytes().length + 1;
 
             if (lineString == null || (eofSentinel != null && lineString.equals(eofSentinel))) {
-                throw new EOFException("EOF sentinel reached!");
+                throw new EOFException(MessageFormat.format(
+                        "EOF sentinel encountered at file {0}, offset {1}",
+                        fileName, offset.toString()));
             }
+
+            offset.incrementByteOffset(lineString.getBytes().length + 1);
+            offset.incrementLineOffset(1L);
 
             return lineString;
 
         } catch (EOFException e) {
             close();
-            throw new EOFException("End of file reached!");
+            throw new EOFException(MessageFormat.format(
+                    "EOF encountered at file {0}, offset {1}",
+                    fileName, offset.toString()));
         }
     }
 

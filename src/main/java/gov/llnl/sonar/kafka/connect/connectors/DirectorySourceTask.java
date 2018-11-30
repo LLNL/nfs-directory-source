@@ -4,6 +4,7 @@ import gov.llnl.sonar.kafka.connect.parsers.FileStreamParser;
 import gov.llnl.sonar.kafka.connect.parsers.FileStreamParserBuilder;
 import gov.llnl.sonar.kafka.connect.offsetmanager.FileOffset;
 import gov.llnl.sonar.kafka.connect.offsetmanager.FileOffsetManager;
+import gov.llnl.sonar.kafka.connect.parsers.ParseException;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -128,12 +129,26 @@ public class DirectorySourceTask extends SourceTask {
 
                 // If not locked or completed, lock it and create a reader
                 if (fileOffset != null) {
+
+                    // Handle case where new file stream parser creation fails
+                    boolean newFileStreamParserCreated = false;
+                    FileStreamParser newFileStreamParser = null;
+
                     try {
-                        FileStreamParser newFileStreamParser = fileStreamParserBuilder.build(p);
-                        newFileStreamParser.seekToOffset(fileOffset.getOffset());
-                        readers.add(newFileStreamParser);
+                        // Build new file stream parser for locked file, and seek to the offset
+                        newFileStreamParser = fileStreamParserBuilder.build(p, fileOffset);
+                        newFileStreamParserCreated = true;
                     } catch (Exception e) {
                         log.error("Task {}: {}", taskID, e);
+
+                        // Failed to create the new file stream parser, release it
+                        fileOffset.setLocked(false);
+                        fileOffsetManager.uploadFileOffset(p.toString(), fileOffset);
+                    }
+
+                    // Only add to readers if no exception was thrown
+                    if (newFileStreamParserCreated) {
+                        readers.add(newFileStreamParser);
                     }
                 }
             }
@@ -173,44 +188,27 @@ public class DirectorySourceTask extends SourceTask {
             // Read from each FileStreamParser
             for (FileStreamParser currentFileStreamParser : currentFileStreamParsers) {
 
-                // Create a FileOffset object to upload after reading
-                FileOffset currentFileOffset = new FileOffset();
-
                 // Read batches of rows
-                int rows = 0;
-                try {
-
-                    for (rows = 0; rows < config.getBatchRows(); rows++) {
+                int rows;
+                for (rows = 0; rows < config.getBatchRows(); rows++) {
+                    try {
                         records.add(currentFileStreamParser.readNextRecord(config.getTopic()));
+                    } catch (ParseException e) {
+                        log.warn("Task {}: {}", taskID, e);
+                    } catch (EOFException e) {
+                        log.info("Task {}: {}", taskID, e.getMessage());
+                        currentFileStreamParser.complete(config.getDeleteIngested(), dirPath, completedDirPath);
+                        break;
                     }
-
-                    currentFileOffset.setOffset(currentFileStreamParser.getByteOffset());
-                    currentFileOffset.setCompleted(false);
-                    currentFileOffset.setLocked(false);
-
-                } catch (EOFException e) {
-                    log.info("Task {}: Reached end of file {}", taskID, currentFileStreamParser.getFileName());
-
-                    // Keep lock and flag as completed
-                    currentFileOffset.setOffset(-1L);
-                    currentFileOffset.setCompleted(true);
-                    currentFileOffset.setLocked(true);
-
-                    // TODO: set TTL on zk file offset node so it doesn't stay forever
-
-                    // Deal with completed file
-                    if (config.getDeleteIngested()) {
-                        currentFileStreamParser.deleteFile();
-                    } else if (config.getCompletedDirname() != null) {
-                        currentFileStreamParser.moveFileIntoDirectory(dirPath, completedDirPath);
-                    }
-
-                } finally {
-                    // Upload the new file offset
-                    fileOffsetManager.uploadFileOffset(
-                            currentFileStreamParser.getFilePath().toString(),
-                            currentFileOffset);
                 }
+
+                // Unlock file after reading
+                currentFileStreamParser.unlock();
+
+                // Upload the new file offset
+                fileOffsetManager.uploadFileOffset(
+                        currentFileStreamParser.getFilePath().toString(),
+                        currentFileStreamParser.getOffset());
 
                 if (rows > 0) {
                     log.info("Task {}: Read {} records from file {}", taskID, rows, currentFileStreamParser.getFileName());

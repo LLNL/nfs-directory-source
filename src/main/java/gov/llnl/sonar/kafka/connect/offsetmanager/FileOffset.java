@@ -11,7 +11,12 @@ public class FileOffset implements Serializable {
     /**
      * Current read offset, in bytes.
      */
-    Long offset;
+    long byteOffset;
+
+    /**
+     * Current read byteOffset, in lines.
+     */
+    long lineOffset;
 
     /**
      * Whether the file is currently locked for reading.
@@ -25,22 +30,25 @@ public class FileOffset implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    public FileOffset() {
-    }
-
-    public FileOffset(Long offset, boolean locked, boolean completed) {
-        this.offset = offset;
+    public FileOffset(long byteOffset, long lineOffset, boolean locked, boolean completed) {
+        this.byteOffset = byteOffset;
+        this.lineOffset = lineOffset;
         this.locked = locked;
         this.completed = completed;
     }
 
     @Override
     public String toString() {
-        return String.format("FileOffset(offset=%d,locked=%b,completed=%b)", offset, locked, completed);
+        return String.format("FileOffset(byteOffset=%d, lineOffset=%d, locked=%b, completed=%b)",
+                byteOffset, lineOffset, locked, completed);
     }
 
-    public void setOffset(Long offset) {
-        this.offset = offset;
+    public void incrementByteOffset(long bytes) {
+        this.byteOffset += bytes;
+    }
+
+    public void incrementLineOffset(long lines) {
+        this.lineOffset += lines;
     }
 
     public void setLocked(boolean locked) {
@@ -51,8 +59,16 @@ public class FileOffset implements Serializable {
         this.completed = completed;
     }
 
-    public Long getOffset() {
-        return offset;
+    public boolean getCompleted() {
+        return completed;
+    }
+
+    public long getByteOffset() {
+        return byteOffset;
+    }
+
+    public long getLineOffset() {
+        return byteOffset;
     }
 }
 

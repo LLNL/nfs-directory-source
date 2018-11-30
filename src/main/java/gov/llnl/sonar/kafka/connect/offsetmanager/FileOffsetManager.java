@@ -45,7 +45,7 @@ public class FileOffsetManager {
      * @param zooKeeperPort Zookeeper port to connect to (e.g. 2181)
      * @param fileOffsetBasePath Provided directory to create locks for
      * @param reset Whether to initialize the directory as empty (reset)
-     * @throws Exception Probably from Curator
+     * @throws Exception From Curator
      */
     public FileOffsetManager(String zooKeeperHost, String zooKeeperPort, String fileOffsetBasePath, boolean reset) throws Exception {
         this.threadID = Thread.currentThread().getId();
@@ -83,9 +83,9 @@ public class FileOffsetManager {
     }
 
     /**
-     * Delete all entries in the file offset directory (offsets/lock) and create new ones.
+     * Delete all entries in the file byteOffset directory (offsets/lock) and create new ones.
      *
-     * @throws Exception
+     * @throws Exception From Curator
      */
     private void reset() throws Exception {
 
@@ -117,9 +117,9 @@ public class FileOffsetManager {
     }
 
     /**
-     * Provided a file path string under the file offset directory,
-     * creates a Zookeeper node name under "offsets" within the file offset directory
-     * e.g. if offset directory is "/usr/foo" and filePath is "/usr/foo/bar/file.txt",
+     * Provided a file path string under the file byteOffset directory,
+     * creates a Zookeeper node name under "offsets" within the file byteOffset directory
+     * e.g. if byteOffset directory is "/usr/foo" and filePath is "/usr/foo/bar/file.txt",
      * creates Zookeeper node name "/usr/foo/offsets/bar/file.txt".
      *
      * @param filePath File path string for which to create an offsets Zookeeper node
@@ -131,12 +131,12 @@ public class FileOffsetManager {
     }
 
     /**
-     * Uploads the provided FileOffset to the appropriate Zookeeper node managing the provided file offset path.
-     * Effectively updates the status of the file offset.
+     * Uploads the provided FileOffset to the appropriate Zookeeper node managing the provided file byteOffset path.
+     * Effectively updates the status of the file byteOffset.
      *
-     * @param fileOffsetPath The path of the file for which to update the file offset
-     * @param fileOffset The new file offset
-     * @throws Exception
+     * @param fileOffsetPath The path of the file for which to update the file byteOffset
+     * @param fileOffset The new file byteOffset
+     * @throws Exception From Curator
      */
     public void uploadFileOffset(String fileOffsetPath, FileOffset fileOffset) throws Exception {
 
@@ -146,16 +146,16 @@ public class FileOffsetManager {
 
         client.create().orSetData().forPath(actualFileOffsetPath, SerializationUtils.serialize(fileOffset));
 
-        //log.debug("Thread {}: Uploaded file getByteOffset {}: {}", threadID, actualFileOffsetPath, fileOffset.toString());
+        //log.info("Thread {}: Uploaded file offset {}: {}", threadID, actualFileOffsetPath, fileOffset.toString());
     }
 
     /**
      * Downloads the FileOffset for a provided file, initializing a new one if it doesn't exist.
      * IMPORTANT: This function is not atomic and therefore must be called inside lock()/unlock()!
      *
-     * @param fileOffsetPath The file for which to download the file offset
-     * @return The file offset
-     * @throws Exception
+     * @param fileOffsetPath The file for which to download the file byteOffset
+     * @return The file byteOffset
+     * @throws Exception From Curator
      */
     public FileOffset downloadFileOffsetWithLock(String fileOffsetPath) throws Exception {
 
@@ -166,7 +166,7 @@ public class FileOffsetManager {
 
         if (client.checkExists().creatingParentContainersIfNeeded().forPath(actualFileOffsetPath) == null) {
             //log.debug("Thread {}: File getByteOffset does not exist, creating and locking it: {} ", threadID, actualFileOffsetPath);
-            fileOffset = new FileOffset(0L, true, false);
+            fileOffset = new FileOffset(0L, 0L, true, false);
             client.create().forPath(actualFileOffsetPath, SerializationUtils.serialize(fileOffset));
         } else {
             //log.debug("Thread {}: File getByteOffset exists, getting it: {} ", threadID, actualFileOffsetPath);
@@ -180,7 +180,7 @@ public class FileOffsetManager {
             }
         }
 
-        //log.debug("Thread {}: Downloaded file getByteOffset {}: {}", threadID, actualFileOffsetPath, fileOffset);
+        //log.info("Thread {}: Downloaded file offset {}: {}", threadID, actualFileOffsetPath, fileOffset);
 
         return fileOffset;
     }

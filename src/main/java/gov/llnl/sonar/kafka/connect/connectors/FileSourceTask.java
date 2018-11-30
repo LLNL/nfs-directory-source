@@ -1,7 +1,9 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
+import gov.llnl.sonar.kafka.connect.offsetmanager.FileOffset;
 import gov.llnl.sonar.kafka.connect.parsers.FileStreamParser;
 import gov.llnl.sonar.kafka.connect.parsers.FileStreamParserBuilder;
+import gov.llnl.sonar.kafka.connect.parsers.ParseException;
 import gov.llnl.sonar.kafka.connect.util.VersionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -11,6 +13,7 @@ import org.json.JSONObject;
 import java.io.EOFException;
 import java.io.File;
 import java.net.InetAddress;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +58,9 @@ public class FileSourceTask extends SourceTask {
             fileStreamParserBuilder.setEofSentinel(config.getEofSentinel());
             fileStreamParserBuilder.setPartitionField(PARTITION_FIELD);
             fileStreamParserBuilder.setOffsetField(OFFSET_FIELD);
-            this.streamParser = fileStreamParserBuilder.build(config.getFilename());
+            this.streamParser = fileStreamParserBuilder.build(
+                    Paths.get(config.getFilename()),
+                    new FileOffset(0L, 0L, true, false));
 
             log.info("Task {}: Added ingestion file {}", taskID, config.getFilename());
 
@@ -73,10 +78,15 @@ public class FileSourceTask extends SourceTask {
 
         try {
             for (int i = 0; i < config.getBatchSize(); i++) {
-                records.add(streamParser.readNextRecord(config.getTopic()));
+                try {
+                    records.add(streamParser.readNextRecord(config.getTopic()));
+                } catch (EOFException e) {
+                    log.info("Task {}: {}", taskID, e.getMessage());
+                    break;
+                } catch (ParseException e) {
+                    log.warn("Task {}: {}", taskID, e.getMessage());
+                }
             }
-        } catch (EOFException e) {
-            log.info("Task {}: Reached end of file {}", taskID, streamParser.getFileName());
         } catch (Exception e) {
             log.error("Task {}: ", taskID, e);
             synchronized (this) {

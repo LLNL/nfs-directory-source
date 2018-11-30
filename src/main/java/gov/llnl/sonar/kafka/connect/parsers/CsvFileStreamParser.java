@@ -1,15 +1,16 @@
 package gov.llnl.sonar.kafka.connect.parsers;
 
 import gov.llnl.sonar.kafka.connect.converters.CsvRecordConverter;
+import gov.llnl.sonar.kafka.connect.offsetmanager.FileOffset;
 import io.confluent.connect.avro.AvroData;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.*;
 import java.nio.file.Path;
+import java.text.MessageFormat;
 import java.util.*;
 
 @Slf4j
@@ -33,9 +34,9 @@ public class CsvFileStreamParser extends FileStreamParser {
                                org.apache.kafka.connect.data.Schema connectSchema,
                                String eofSentinel,
                                int bufferSize,
-                               long byteOffset,
+                               FileOffset offset,
                                String partitionField,
-                               String offsetField) throws IOException {
+                               String offsetField) throws ParseException, IOException {
         super(filePath,
               formatOptions,
               avroData,
@@ -43,7 +44,7 @@ public class CsvFileStreamParser extends FileStreamParser {
               connectSchema,
               eofSentinel,
               bufferSize,
-              byteOffset,
+              offset,
               partitionField,
               offsetField);
 
@@ -53,7 +54,7 @@ public class CsvFileStreamParser extends FileStreamParser {
         csvRecordConverter = new CsvRecordConverter(connectSchema, columns);
     }
 
-    private synchronized void parseHeader() throws IOException {
+    private synchronized void parseHeader() throws ParseException, IOException {
         if (columns == null && hasHeader) {
             columns = readCsvLineIntoTokens();
             numColumns = columns.length;
@@ -86,10 +87,10 @@ public class CsvFileStreamParser extends FileStreamParser {
         }
     }
 
-    private synchronized String[] readCsvLineIntoTokens() throws IOException {
+    private synchronized String[] readCsvLineIntoTokens() throws ParseException, IOException {
 
         if (bufferedReader == null) {
-            throw new EOFException("EOF reached!");
+            throw new EOFException("Reader closed!");
         }
 
         // Container for tokens to return
@@ -103,12 +104,14 @@ public class CsvFileStreamParser extends FileStreamParser {
         // Reset StringBuilder
         sb.setLength(0);
         boolean firstChar = true;
-        while(true) {
+        while (true) {
             int c = bufferedReader.read();
-            byteOffset++;
+            offset.incrementByteOffset(1L);
 
             if (c == -1) {
-                throw new EOFException("EOF reached!");
+                throw new EOFException(MessageFormat.format(
+                        "EOF encountered at file {0}, offset {1}",
+                        fileName, offset.toString()));
             } else if (firstChar && c == commentChar) {
                 // Commented line, skip
                 skipLine();
@@ -123,23 +126,26 @@ public class CsvFileStreamParser extends FileStreamParser {
                 sb.setLength(0);
             } else {
                 // Add char to current StringBuilder
-                sb.append((char)c);
+                sb.append((char) c);
             }
 
             firstChar = false;
         }
 
+        // Construct array
+        String[] lineTokensArray = lineTokens.toArray(new String[lineTokens.size()]);
+
         // Check length of tokens against columns
         if (numColumns > 0 && lineTokens.size() != numColumns) {
-            throw new DataException("Invalid number of columns in " + fileName + " before byte offset " + String.valueOf(byteOffset));
+            throw new ParseException(this, "Invalid number of columns");
         }
 
         // Return tokens as String[]
-        return lineTokens.toArray(new String[lineTokens.size()]);
+        return lineTokensArray;
     }
 
     @Override
-    public synchronized SourceRecord readNextRecord(String topic) throws IOException {
+    public synchronized SourceRecord readNextRecord(String topic) throws EOFException, ParseException, IOException {
         return new SourceRecord(
                 sourcePartition,
                 getSourceOffset(),
