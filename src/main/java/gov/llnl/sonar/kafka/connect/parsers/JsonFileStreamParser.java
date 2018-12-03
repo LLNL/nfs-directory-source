@@ -1,5 +1,6 @@
 package gov.llnl.sonar.kafka.connect.parsers;
 
+import gov.llnl.sonar.kafka.connect.converters.ConvertException;
 import gov.llnl.sonar.kafka.connect.offsetmanager.FileOffset;
 import io.confluent.connect.avro.AvroData;
 import lombok.extern.slf4j.Slf4j;
@@ -44,20 +45,26 @@ public class JsonFileStreamParser extends FileStreamParser {
     }
 
     @Override
-    public synchronized SourceRecord readNextRecord(String topic) throws EOFException, ParseException, IOException {
+    public synchronized SourceRecord readNextRecord(String topic)
+            throws EOFException, ParseException, ConvertException, IOException {
 
+        GenericData.Record datum = new GenericData.Record(avroSchema);
         try {
-            GenericData.Record datum = new GenericData.Record(avroSchema);
             Decoder decoder = DecoderFactory.get().jsonDecoder(avroSchema, nextLine());
             datum = datumReader.read(datum, decoder);
+        } catch (AvroTypeException e) {
+            throw new ParseException(this, e.getMessage());
+        }
+
+        try {
             return new SourceRecord(
                     sourcePartition,
                     getSourceOffset(),
                     topic,
                     connectSchema,
                     avroData.toConnectData(avroSchema, datum).value());
-        } catch (AvroTypeException e) {
-            throw new ParseException(this, e.getMessage());
+        } catch (Exception e) {
+            throw new ConvertException(datum, avroSchema.toString(true), e.getMessage());
         }
     }
 }

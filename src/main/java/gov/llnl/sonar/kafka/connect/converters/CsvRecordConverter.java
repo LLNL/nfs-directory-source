@@ -71,7 +71,7 @@ public class CsvRecordConverter {
      * @param csvTokens The string token array to convert
      * @return The Kafka Connect record with the schema provided in the constructor
      */
-    public Struct convert(String[] csvTokens) {
+    public Struct convert(String[] csvTokens) throws ConvertException {
         Struct record = new Struct(connectSchema);
 
         int i = 0;
@@ -83,16 +83,9 @@ public class CsvRecordConverter {
                 Object parsedValue = stringToConnectObject(value, connectSchema.field(column).schema().type());
                 record = record.put(column, parsedValue);
             } catch (NumberFormatException e) {
-                log.error("Failed to parse column {}, value {}, expected type {}",
-                        column, value,
-                        connectSchema.field(column).schema().type(), e);
+                throw new ConvertException(value, connectSchema.field(column).schema().type(), e.getMessage());
             } catch (NullPointerException e) {
-                log.error("Failed to get schema for column {}", column);
-                log.error("Schema contents: " +
-                        Arrays.toString(connectSchema.fields().stream().map(
-                                f -> f.name() + " : " + f.schema().name()).toArray()
-                        )
-                );
+                throw new ConvertException(value, column, e.getMessage());
             }
         }
 

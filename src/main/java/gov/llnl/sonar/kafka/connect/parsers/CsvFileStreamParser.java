@@ -1,5 +1,6 @@
 package gov.llnl.sonar.kafka.connect.parsers;
 
+import gov.llnl.sonar.kafka.connect.converters.ConvertException;
 import gov.llnl.sonar.kafka.connect.converters.CsvRecordConverter;
 import gov.llnl.sonar.kafka.connect.offsetmanager.FileOffset;
 import io.confluent.connect.avro.AvroData;
@@ -145,7 +146,8 @@ public class CsvFileStreamParser extends FileStreamParser {
     }
 
     @Override
-    public synchronized SourceRecord readNextRecord(String topic) throws EOFException, ParseException, IOException {
+    public synchronized SourceRecord readNextRecord(String topic)
+            throws EOFException, ParseException, ConvertException, IOException {
         return new SourceRecord(
                 sourcePartition,
                 getSourceOffset(),

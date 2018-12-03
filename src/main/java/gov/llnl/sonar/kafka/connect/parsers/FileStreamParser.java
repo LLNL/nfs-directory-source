@@ -1,5 +1,6 @@
 package gov.llnl.sonar.kafka.connect.parsers;
 
+import gov.llnl.sonar.kafka.connect.converters.ConvertException;
 import gov.llnl.sonar.kafka.connect.offsetmanager.FileOffset;
 import io.confluent.connect.avro.AvroData;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +43,8 @@ public abstract class FileStreamParser {
     Map<String, String> sourcePartition;
 
     // Abstract functions
-    public abstract SourceRecord readNextRecord(String topic) throws EOFException, ParseException, IOException;
+    public abstract SourceRecord readNextRecord(String topic)
+            throws EOFException, ParseException, ConvertException, IOException;
 
     public FileStreamParser(Path filePath,
                             JSONObject formatOptions,
