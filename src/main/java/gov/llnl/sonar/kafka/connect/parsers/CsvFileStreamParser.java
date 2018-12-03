@@ -125,6 +125,8 @@ public class CsvFileStreamParser extends FileStreamParser {
                 // Build token, reset StringBuilder
                 lineTokens.add(sb.toString());
                 sb.setLength(0);
+            } else if (c == 0) {
+                // Null character, don't add
             } else {
                 // Add char to current StringBuilder
                 sb.append((char) c);
