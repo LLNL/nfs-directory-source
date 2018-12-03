@@ -183,44 +183,57 @@ public class DirectorySourceTask extends SourceTask {
         List<SourceRecord> records = new ArrayList<>();
         List<FileStreamParser> currentFileStreamParsers = getNextFileStreamParsers();
 
-        try {
+        // Read from each FileStreamParser
+        for (FileStreamParser currentFileStreamParser : currentFileStreamParsers) {
 
-            // Read from each FileStreamParser
-            for (FileStreamParser currentFileStreamParser : currentFileStreamParsers) {
-
-                // Read batches of rows
-                int rows;
-                for (rows = 0; rows < config.getBatchRows(); rows++) {
-                    try {
-                        records.add(currentFileStreamParser.readNextRecord(config.getTopic()));
-                    } catch (ParseException e) {
-                        log.warn("Task {}: {}", taskID, e.getMessage());
-                    } catch (EOFException e) {
-                        log.info("Task {}: {}", taskID, e.getMessage());
-                        currentFileStreamParser.complete(config.getDeleteIngested(), dirPath, completedDirPath);
-                        break;
-                    }
+            // Read batches of rows
+            int rows;
+            boolean completeFile = false;
+            for (rows = 0; rows < config.getBatchRows(); rows++) {
+                try {
+                    records.add(currentFileStreamParser.readNextRecord(config.getTopic()));
+                } catch (ParseException e) {
+                    log.warn("Task {}: {}", taskID, e.getMessage());
+                } catch (EOFException e) {
+                    log.info("Task {}: {}", taskID, e.getMessage());
+                    completeFile = true;
+                    break;
+                } catch (Exception e) {
+                    log.info("Task {}: {}", taskID, e);
+                    break;
                 }
+            }
 
-                // Unlock file after reading
-                currentFileStreamParser.unlock();
+            // Update ingest state
+            try {
+
+                if (completeFile) {
+                    // Handle completion of file ingest if necessary
+                    // (may throw an exception, but it's ok if this file stays locked)
+                    currentFileStreamParser.complete(config.getDeleteIngested(), dirPath, completedDirPath);
+                } else {
+                    // File not completed, unlock
+                    // (won't throw an exception, so file will be unlocked if uploadFileOffset completes)
+                    currentFileStreamParser.unlock();
+                }
 
                 // Upload the new file offset
                 fileOffsetManager.uploadFileOffset(
                         currentFileStreamParser.getFilePath().toString(),
                         currentFileStreamParser.getOffset());
 
-                if (rows > 0) {
-                    log.info("Task {}: Read {} records from file {}", taskID, rows, currentFileStreamParser.getFileName());
-                }
-
+                // Close the file
                 currentFileStreamParser.close();
+
+            } catch (Exception e) {
+                    log.info("Task {}: {}", taskID, e);
+                    break;
             }
-        } catch (Exception e) {
-            log.error("Task {}: ", taskID, e);
-            synchronized (this) {
-                this.wait(1000);
+
+            if (rows > 0) {
+                log.info("Task {}: Read {} records from file {}", taskID, rows, currentFileStreamParser.getFileName());
             }
+
         }
 
         // If empty, return null
