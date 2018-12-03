@@ -75,6 +75,8 @@ public class DirectorySourceTest extends ConnectTest {
         testDirectorySourceTopic = testDirBasename + "-topic";
 
         configProperties.put("tasks.max", "3");
+        configProperties.put(DirectorySourceConfig.BATCH_FILES, "2");
+        configProperties.put(DirectorySourceConfig.BATCH_ROWS, "2");
         configProperties.put(DirectorySourceConfig.DIRNAME, testDirname);
         configProperties.put(DirectorySourceConfig.FORMAT, "json");
         configProperties.put(DirectorySourceConfig.FORMAT_OPTIONS, "{}");

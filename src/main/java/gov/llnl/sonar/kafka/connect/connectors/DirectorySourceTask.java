@@ -194,7 +194,7 @@ public class DirectorySourceTask extends SourceTask {
                     try {
                         records.add(currentFileStreamParser.readNextRecord(config.getTopic()));
                     } catch (ParseException e) {
-                        log.warn("Task {}: {}", taskID, e);
+                        log.warn("Task {}: {}", taskID, e.getMessage());
                     } catch (EOFException e) {
                         log.info("Task {}: {}", taskID, e.getMessage());
                         currentFileStreamParser.complete(config.getDeleteIngested(), dirPath, completedDirPath);
