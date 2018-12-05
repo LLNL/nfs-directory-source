@@ -186,6 +186,23 @@ public class FileOffsetManager {
     }
 
     /**
+     * Downloads the file offset for a given file if it exists (does not create/modify anything)
+     * @param fileOffsetPath The file offset to download
+     * @return The deserialized FileOffset object
+     * @throws Exception from Curator
+     */
+    public FileOffset downloadFileOffsetWithoutLock(String fileOffsetPath) throws Exception {
+
+        FileOffset fileOffset;
+        String actualFileOffsetPath = makeOffsetPath(fileOffsetPath);
+
+        byte[] fileOffsetBytes = client.getData().forPath(actualFileOffsetPath);
+        fileOffset = SerializationUtils.deserialize(fileOffsetBytes);
+
+        return fileOffset;
+    }
+
+    /**
      * Obtains the global (process/thread-wide) lock for this FileOffsetManager instance.
      */
     public void lock() {
