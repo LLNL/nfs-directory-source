@@ -126,6 +126,10 @@ public class FileOffsetManager {
      * @return Zookeeper path for new offsets node.
      */
     private String makeOffsetPath(String filePath) {
+        return makeOffsetPath(fileOffsetBasePath, filePath);
+    }
+
+    public static String makeOffsetPath(String fileOffsetBasePath, String filePath) {
         Path relativePath = Paths.get(fileOffsetBasePath).relativize(Paths.get(filePath)).normalize();
         return ZKPaths.makePath(fileOffsetBasePath, OFFSETS_SUBPATH, relativePath.toString());
     }
