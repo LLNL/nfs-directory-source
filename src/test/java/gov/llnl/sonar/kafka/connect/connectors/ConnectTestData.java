@@ -1,13 +1,13 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
-import lombok.extern.log4j.Log4j;
+import lombok.extern.log4j.Log4j2;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecordBuilder;
 
 import java.util.*;
 
-@Log4j
+@Log4j2
 public class ConnectTestData {
 
     static String idstrAvroSchemaString = "{" +

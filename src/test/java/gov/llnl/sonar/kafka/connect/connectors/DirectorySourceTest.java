@@ -1,11 +1,11 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
-import lombok.extern.log4j.Log4j;
+import lombok.extern.log4j.Log4j2;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -19,7 +19,7 @@ import java.util.Map;
 import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.idstrAvroData;
 import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.idstrAvroSchemaEscapedString;
 
-@Log4j
+@Log4j2
 public class DirectorySourceTest extends ConnectTest {
 
     Map<String, String> configProperties = new HashMap<>();
@@ -29,9 +29,8 @@ public class DirectorySourceTest extends ConnectTest {
     private String testDirectorySourceConnector;
     private String testDirectorySourceTopic;
 
-    @Before
-    public void setup() {
-        super.setup();
+    @BeforeAll
+    public void createTestContents() {
 
         try {
 
@@ -97,8 +96,8 @@ public class DirectorySourceTest extends ConnectTest {
         validateTopicContents(testDirectorySourceTopic, idstrAvroData);
     }
 
-    @After
-    public void teardown() {
+    @AfterAll
+    public void deleteTestContents() {
         confluent.deleteConnector(testDirectorySourceConnector);
         confluent.deleteTopic(testDirectorySourceTopic);
         try {
@@ -106,7 +105,6 @@ public class DirectorySourceTest extends ConnectTest {
         } catch (IOException ex) {
             log.error(ex);
         }
-        super.teardown();
     }
 
 }

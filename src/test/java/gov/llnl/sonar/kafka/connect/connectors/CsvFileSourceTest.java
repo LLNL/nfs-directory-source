@@ -1,10 +1,8 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
-import lombok.extern.log4j.Log4j;
+import lombok.extern.log4j.Log4j2;
 import org.apache.commons.io.FilenameUtils;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.*;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -15,7 +13,7 @@ import java.util.*;
 
 import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.*;
 
-@Log4j
+@Log4j2
 public class CsvFileSourceTest extends ConnectTest {
 
     private Path csvTestFile;
@@ -25,10 +23,8 @@ public class CsvFileSourceTest extends ConnectTest {
 
     private Map<String, String> configProperties = new HashMap<>();
 
-    @Before
-    public void setup() {
-
-        super.setup();
+    @BeforeAll
+    public void createTestContents() {
 
         try {
             log.info("Creating test CSV file");
@@ -75,12 +71,11 @@ public class CsvFileSourceTest extends ConnectTest {
         validateTopicContents(csvTestSourceTopic, idstrAvroData);
     }
 
-    @After
-    public void teardown() {
+    @AfterAll
+    public void deleteTestContents() {
         confluent.deleteConnector(csvTestSourceConnector);
         confluent.deleteTopic(csvTestSourceTopic);
         csvTestFile.toFile().delete();
-        super.teardown();
     }
 
 }

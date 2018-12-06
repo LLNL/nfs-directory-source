@@ -69,7 +69,7 @@ public class FileOffsetManager {
             }
         });
         client.start();
-        client.blockUntilConnected();
+        client.blockUntilConnected(); // Sometimes we get stuck here...
 
         //log.debug("Thread {}: Zookeeper connection initialized", threadID);
 

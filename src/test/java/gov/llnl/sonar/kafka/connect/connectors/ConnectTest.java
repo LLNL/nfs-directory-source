@@ -1,26 +1,33 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
-import lombok.extern.log4j.Log4j;
+import lombok.extern.log4j.Log4j2;
 import org.apache.avro.generic.GenericData;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.TestInstance;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static junit.framework.TestCase.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@Log4j
+@Log4j2
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class ConnectTest {
 
     ConfluentDriver confluent;
 
+    @BeforeAll
     public void setup() {
         confluent = new ConfluentDriver("/Users/gimenez1/Home/local/src/confluent-5.0.1/bin");
     }
 
+    @AfterAll
     public void teardown() {
         confluent.close();
     }
@@ -34,7 +41,7 @@ public abstract class ConnectTest {
 
         while (consumedRecords.size() < trueData.size()) {
 
-            Iterable<ConsumerRecord> consumerStream = consumer.poll(10000);
+            Iterable<ConsumerRecord> consumerStream = consumer.poll(Duration.ofSeconds(10));
             for (ConsumerRecord consumerRecord : consumerStream) {
 
                 // Parse to avro record

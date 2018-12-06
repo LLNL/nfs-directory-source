@@ -1,10 +1,10 @@
 package gov.llnl.sonar.kafka.connect.connectors;
 
-import lombok.extern.log4j.Log4j;
+import lombok.extern.log4j.Log4j2;
 import org.apache.commons.io.FilenameUtils;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -17,7 +17,7 @@ import java.util.Map;
 import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.idstrAvroData;
 import static gov.llnl.sonar.kafka.connect.connectors.ConnectTestData.idstrAvroSchemaEscapedString;
 
-@Log4j
+@Log4j2
 public class JsonFileSourceTest extends ConnectTest {
 
     Map<String, String> configProperties = new HashMap<>();
@@ -27,9 +27,8 @@ public class JsonFileSourceTest extends ConnectTest {
     private String jsonTestSourceConnector;
     private String jsonTestSourceTopic;
 
-    @Before
-    public void setup() {
-        super.setup();
+    @BeforeAll
+    public void createTestContents() {
 
         try {
             log.info("Creating test JSON file");
@@ -75,12 +74,11 @@ public class JsonFileSourceTest extends ConnectTest {
         validateTopicContents(jsonTestSourceTopic, idstrAvroData);
     }
 
-    @After
-    public void teardown() {
+    @AfterAll
+    public void deleteTestContents() {
         confluent.deleteConnector(jsonTestSourceConnector);
         confluent.deleteTopic(jsonTestSourceTopic);
         jsonTestFile.toFile().delete();
-        super.teardown();
     }
 
 }
