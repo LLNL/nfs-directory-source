@@ -42,12 +42,11 @@ public class CLI {
     public void run() throws Exception {
         CuratorFramework client = CuratorFrameworkFactory.newClient(
                 zooKeeperHost + ":" + zooKeeperPort,
-                Integer.MAX_VALUE,
-                Integer.MAX_VALUE,
+                10000,
+                10000,
                 new RetryForever(1000));
 
         client.start();
-        client.blockUntilConnected();
 
         FileOffset fileOffset;
         String actualFileOffsetPath = makeOffsetPath(ingestDir, ingestFile);

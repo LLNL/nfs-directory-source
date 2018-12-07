@@ -55,8 +55,8 @@ public class FileOffsetManager {
 
         client = CuratorFrameworkFactory.newClient(
                 zooKeeperHost + ":" + zooKeeperPort,
-                Integer.MAX_VALUE,
-                Integer.MAX_VALUE,
+                10000,
+                10000,
                 new RetryForever(1000));
 
         FileOffsetManager thisRef = this;
@@ -69,7 +69,6 @@ public class FileOffsetManager {
             }
         });
         client.start();
-        client.blockUntilConnected(); // Sometimes we get stuck here...
 
         //log.debug("Thread {}: Zookeeper connection initialized", threadID);
 
