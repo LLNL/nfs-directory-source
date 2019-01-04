@@ -1,4 +1,14 @@
 /**
+ * This file has been modified from its originally licensed form.
+ *
+ * This software is made available by Confluent, Inc., under the
+ * terms of the Confluent Community License Agreement, Version 1.0
+ * located at http://www.confluent.io/confluent-community-license.  BY
+ * INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
+ * THE SOFTWARE, YOU AGREE TO THE TERMS OF SUCH LICENSE AGREEMENT.
+ */
+
+/**
  * Copyright 2014 Confluent Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

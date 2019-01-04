@@ -2,7 +2,6 @@
 
 For Kafka Connect to use connectors, they must be provided in a location pointed to by the variable `plugin.path`
 in the connector properties.
-On Sonar, we currently use the default `connect-avro-distributed.properties` file located in `/etc/schema-registry`.
 Within that location, we can either deploy a fat jar or a collection of jars (see [building](building.md))
 
 Fat jars must reside in the `plugin.path` directly (not in a subdirectory), while collections of jars must reside
@@ -18,4 +17,3 @@ For example, if the plugin path is `/usr/share/kafka-plugins`, we could have:
 
 If done incorrectly, dependency errors can occur. 
 For more information, see [troubleshooting](troubleshooting.md).
-

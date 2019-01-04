@@ -35,7 +35,7 @@ within the path.
 
 ## ZooKeeper CONNECTED over and over
 
-ZooKeeper transactions are stateless, so a ZooKeeper connection is kept alive by sending "heartbeat" signals
+A ZooKeeper connection is kept alive by sending "heartbeat" signals
 from the client to the server. 
 After a certain length of time passes between heartbeats, a ZooKeeper connection is closed.
 The Sonar directory source connector uses ZooKeeper through the Apache Curator API, and its timeout is set to be really 
@@ -46,8 +46,7 @@ At this point, typically the connector becomes completely dysfunctional (and log
 
 Typically, this occurs because the Sonar connector filled up ZooKeeper with too much crap--er, file offset data.
 
-1. Stop the directory source connector causing the CONNECTED logs (or stop all of them using `uninstall connectors -a`
-from `sonar-driver`)
+1. Stop the directory source connector causing the CONNECTED logs
 2. Purge the file offsets stored in ZooKeeper. ZooKeeper looks like a filesystem, and the ZooKeeper offsets for a 
 directory source `/some/dir/source` are located in an identical ZooKeeper path `/some/dir/source`. Delete it using the 
 `zookeeper-client` provided by `confluent`.
@@ -66,7 +65,7 @@ some more information. Otherwise, make sure all required connector configuration
 
 ## ValueError: Expecting value: line 1 column 1 (char 0)
 
-You used the `sonar-driver` to do something and got this weird JSON error. 
+You used the `nfs-directory-source` to do something and got this weird JSON error. 
 This means the server responded with an error status code, rather than a useful JSON message. 
 Check the confluent connect logs for something useful.
 
