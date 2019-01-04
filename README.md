@@ -29,6 +29,12 @@ nfs-directory-source is distributed under the terms of both the MIT license and 
 Apache License (Version 2.0). Users may choose either license, at their
 option.
 
+nfs-directory-source also contains the following modified versions of source code licensed by Confluent:
+* [AvroConverter.java](src/main/java/io/confluent/connect/avro/AvroConverter.java)
+* [AvroConverterConfig.java](src/main/java/io/confluent/connect/avro/AvroConverterConfig.java)
+* [AvroData.java](src/main/java/io/confluent/connect/avro/AvroData.java)
+* [AvroDataConfig.java](src/main/java/io/confluent/connect/avro/AvroDataConfig.java)
+
 All new contributions must be made under both the MIT and Apache-2.0
 licenses.
 
