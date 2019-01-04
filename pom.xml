@@ -3,12 +3,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>gov.llnl.sonar.kafka.connectors</groupId>
-    <artifactId>sonar-connectors</artifactId>
-    <version>0.3</version>
+    <artifactId>nfs-directory-source</artifactId>
+    <version>1.0</version>
     <packaging>jar</packaging>
 
-    <name>sonar-kafka-connectors</name>
-    <description>Sonar Kafka Connectors</description>
+    <name>nfs-directory-source</name>
+    <description>NFS Directory Source Kafka Connector</description>
 
     <properties>
         <kafka.version>2.0.1</kafka.version>
@@ -140,7 +140,7 @@
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.1.0</version>
                 <configuration>
-                    <outputDirectory>${project.build.directory}/plugin/sonar-connectors</outputDirectory>
+                    <outputDirectory>${project.build.directory}/plugin/nfs-directory-source</outputDirectory>
                     <archive>
                         <manifest>
                             <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
@@ -170,7 +170,7 @@
                             <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${project.build.directory}/plugin/sonar-connectors</outputDirectory>
+                            <outputDirectory>${project.build.directory}/plugin/nfs-directory-source</outputDirectory>
                             <overWriteReleases>false</overWriteReleases>
                             <overWriteSnapshots>false</overWriteSnapshots>
                             <overWriteIfNewer>true</overWriteIfNewer>
